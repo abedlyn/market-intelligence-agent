@@ -56,7 +56,6 @@ if uploaded_file is not None:
                 )
 
                 prompt = build_research_prompt("the asset shown in the uploaded chart")
-You are a financial chart analysis assistant.
 
 Analyze the uploaded chart carefully.
 
