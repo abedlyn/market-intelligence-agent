@@ -58,7 +58,6 @@ if uploaded_file is not None:
                 prompt = build_research_prompt(
     "the asset shown in the uploaded chart"
                 )
-"""
 
                 response = client.models.generate_content(
                     model="gemini-3.6-flash",
