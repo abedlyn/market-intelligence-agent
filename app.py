@@ -79,6 +79,44 @@ else:
                             }
                         },
                         """
+Analyze this financial chart carefully.
+
+Identify, if possible:
+- Asset and trading pair
+- Timeframe
+- Current trend
+- Market structure
+- Support and resistance
+- Momentum
+- Volume behavior
+- Breakouts or breakdowns
+- Important technical patterns
+- Bullish evidence
+- Bearish evidence
+- Important uncertainties
+
+Do NOT claim to predict the future.
+Do NOT invent information that cannot be seen.
+
+Present the result clearly and explain your reasoning.
+"""
+                    ]
+                )
+
+                st.subheader("🤖 AI Chart Analysis")
+                st.write(response.text)
+
+            except Exception as e:
+                st.error(f"Analysis failed: {e}")
+
+else:
+    st.info("Upload a chart screenshot above to begin.")                        {
+                            "inline_data": {
+                                "mime_type": uploaded_file.type,
+                                "data": image_bytes
+                            }
+                        },
+                        """
                         Analyze this financial chart carefully.
 
                         Identify, if possible:
