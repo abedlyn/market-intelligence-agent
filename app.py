@@ -1,5 +1,4 @@
 import streamlit as st
-from research_engine import build_research_prompt
 from google import genai
 from google.genai import types
 
@@ -55,7 +54,8 @@ if uploaded_file is not None:
                     mime_type=uploaded_file.type
                 )
 
-                prompt = build_research_prompt("the asset shown in the uploaded chart")
+                prompt = """
+You are a financial chart analysis assistant.
 
 Analyze the uploaded chart carefully.
 
@@ -87,7 +87,7 @@ Do not invent information that cannot be observed from the chart.
 Clearly distinguish what is visible from what is inferred.
 
 Give a clear explanation of your reasoning.
-
+"""
 
                 response = client.models.generate_content(
                     model="gemini-3.6-flash",
@@ -111,4 +111,4 @@ else:
 
     st.info(
         "Upload a chart screenshot above to begin."
-                )                
+    )
