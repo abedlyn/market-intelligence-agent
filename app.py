@@ -153,6 +153,4 @@ else:
 
 else:
 
-    st.info(
-        "Upload a chart screenshot above to begin."
-  )
+    st.info("Upload a chart screenshot above to begin.")
