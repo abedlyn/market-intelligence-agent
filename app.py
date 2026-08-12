@@ -1,4 +1,5 @@
 import streamlit as st
+from research_engine import build_research_prompt
 from google import genai
 from google.genai import types
 
@@ -54,39 +55,9 @@ if uploaded_file is not None:
                     mime_type=uploaded_file.type
                 )
 
-                prompt = """
-You are a financial chart analysis assistant.
-
-Analyze the uploaded chart carefully.
-
-Identify, if possible:
-
-1. Asset or trading pair
-2. Timeframe
-3. Current trend
-4. Market structure
-5. Support levels
-6. Resistance levels
-7. Momentum
-8. Volume behavior
-9. Breakouts or breakdowns
-10. Candlestick patterns
-11. Technical patterns
-12. Bullish evidence
-13. Bearish evidence
-14. Important uncertainties
-
-IMPORTANT:
-
-Do not claim to know the future.
-
-Do not present your analysis as financial advice.
-
-Do not invent information that cannot be observed from the chart.
-
-Clearly distinguish what is visible from what is inferred.
-
-Give a clear explanation of your reasoning.
+                prompt = build_research_prompt(
+    "the asset shown in the uploaded chart"
+                )
 """
 
                 response = client.models.generate_content(
