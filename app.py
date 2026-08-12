@@ -88,7 +88,7 @@ Do not invent information that cannot be observed from the chart.
 Clearly distinguish what is visible from what is inferred.
 
 Give a clear explanation of your reasoning.
-"""
+
 
                 response = client.models.generate_content(
                     model="gemini-3.6-flash",
