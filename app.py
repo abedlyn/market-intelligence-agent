@@ -137,6 +137,43 @@ If you cannot identify it, return UNKNOWN.
                 crypto_id = normalize_crypto_id(
                     asset_symbol
                 )
+                # ------------------------------------------------
+# GET LIVE NEWS
+# ------------------------------------------------
+
+news_context = ""
+
+try:
+
+    alpha_vantage_key = st.secrets[
+        "ALPHA_VANTAGE_API_KEY"
+    ]
+
+    news_symbol = asset_symbol
+
+    if crypto_id:
+        news_symbol = f"CRYPTO:{asset_symbol}"
+
+    news_data = get_market_news(
+        news_symbol,
+        alpha_vantage_key,
+        limit=10
+    )
+
+    news_context = str(news_data)
+
+except Exception as news_error:
+
+    news_context = f"""
+LIVE NEWS
+
+The news-data request failed.
+
+Error:
+{news_error}
+
+Do not invent current news.
+"""
 
 
                 # ------------------------------------------------
@@ -215,6 +252,8 @@ chart and clearly identify this limitation.
 {research_prompt}
 
 {market_context}
+
+{news_context}
 
 
 ADDITIONAL INSTRUCTIONS
