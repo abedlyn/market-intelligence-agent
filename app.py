@@ -104,6 +104,7 @@ NVDA
 
 Do not provide an explanation.
 Do not provide anything else.
+
 If you cannot identify it, return UNKNOWN.
 """
 
@@ -161,8 +162,12 @@ Current market information:
 {market_data}
 
 IMPORTANT:
-This information comes from an external market-data source.
-Treat it as factual market data, not as a prediction.
+
+This information comes from an external
+market-data source.
+
+Treat it as factual market data,
+not as a prediction.
 """
 
                     except Exception as market_error:
@@ -184,19 +189,19 @@ Do not invent current market data.
                     market_context = """
 LIVE MARKET DATA
 
-No supported cryptocurrency data was retrieved.
+No supported cryptocurrency data
+was retrieved.
 
-If this is a stock or another asset, do not invent
-current market data.
+If this is a stock or another asset,
+do not invent current market data.
 
-Base the analysis on the uploaded chart and clearly
-identify the limitation.
+Base the analysis on the uploaded
+chart and clearly identify this limitation.
 """
 
 
                 # ------------------------------------------------
-                # SECOND AI PASS:
-                # FULL RESEARCH ANALYSIS
+                # BUILD RESEARCH PROMPT
                 # ------------------------------------------------
 
                 research_prompt = build_research_prompt(
@@ -209,56 +214,80 @@ identify the limitation.
 
 {market_context}
 
+
 ADDITIONAL INSTRUCTIONS
 
 You are analyzing:
 
 {asset_symbol}
 
+
 Separate your conclusions into:
 
 1. OBSERVED EVIDENCE
-Things directly visible in the chart or supplied market data.
+
+Things directly visible in the chart
+or supplied market data.
+
 
 2. INFERENCES
-Reasonable conclusions derived from the evidence.
+
+Reasonable conclusions derived
+from the evidence.
+
 
 3. UNCERTAINTIES
+
 Things that cannot be established reliably.
 
+
 4. BULLISH SCENARIO
-Explain the conditions that could support this scenario.
+
+Explain the conditions that could
+support this scenario.
+
 
 5. NEUTRAL / RANGE SCENARIO
-Explain the conditions that could support this scenario.
+
+Explain the conditions that could
+support this scenario.
+
 
 6. BEARISH SCENARIO
-Explain the conditions that could support this scenario.
+
+Explain the conditions that could
+support this scenario.
+
 
 7. SCENARIO PROBABILITIES
-Assign estimated probabilities to the three scenarios.
 
-The three probabilities must total approximately 100%.
+You may discuss your initial assessment,
+but the final displayed probabilities
+will be calculated separately by the
+evidence-scoring engine.
 
-These are NOT predictions or guarantees.
 
-They are evidence-weighted analytical estimates.
+IMPORTANT:
 
-Do not fabricate news, prices, events, institutional activity,
-economic data, or sentiment.
+These probabilities are NOT predictions
+or guarantees.
 
-If information is unavailable, explicitly say so.
+They are evidence-weighted analytical
+estimates.
 
-End with:
+Do not fabricate news, prices, events,
+institutional activity, economic data,
+or sentiment.
 
-WHAT WOULD CHANGE THIS ANALYSIS
+If information is unavailable,
+explicitly say so.
 
-List the specific new evidence or price behavior that would
-cause the assessment to change.
+
 EVIDENCE SCORING
 
-After completing your analysis, assign evidence strength scores
-from 0 to 10 for each category.
+After completing your analysis, assign
+evidence strength scores from 0 to 10
+for each category.
 
 0 = no evidence
 1-2 = very weak
@@ -267,11 +296,12 @@ from 0 to 10 for each category.
 7-8 = strong
 9-10 = very strong
 
+
 Score BOTH bullish and bearish evidence.
 
 Use this exact JSON format:
 
-{
+{{
   "technical_bullish": 0,
   "technical_bearish": 0,
   "momentum_bullish": 0,
@@ -282,14 +312,32 @@ Use this exact JSON format:
   "fundamental_bearish": 0,
   "macro_bullish": 0,
   "macro_bearish": 0
-}
+}}
 
-Return the JSON at the very end of your response.
 
-Do not invent evidence simply to give a score.
-If evidence is unavailable, use 0. 
+Return the JSON at the very end
+of your response.
+
+Do not invent evidence simply
+to give a score.
+
+If evidence is unavailable,
+use 0.
+
+
+End with:
+
+WHAT WOULD CHANGE THIS ANALYSIS
+
+List the specific new evidence or
+price behavior that would cause the
+assessment to change.
 """
 
+
+                # ------------------------------------------------
+                # FINAL AI ANALYSIS
+                # ------------------------------------------------
 
                 response = client.models.generate_content(
                     model="gemini-3.6-flash",
@@ -301,12 +349,17 @@ If evidence is unavailable, use 0.
 
 
                 # ------------------------------------------------
-                # DISPLAY RESULTS
+                # DISPLAY ASSET
                 # ------------------------------------------------
 
                 st.success(
                     f"Asset identified: {asset_symbol}"
                 )
+
+
+                # ------------------------------------------------
+                # DISPLAY MARKET DATA
+                # ------------------------------------------------
 
                 if market_context:
 
@@ -320,57 +373,107 @@ If evidence is unavailable, use 0.
                         )
 
 
+                # ------------------------------------------------
+                # DISPLAY AI REPORT
+                # ------------------------------------------------
+
                 st.divider()
 
                 st.subheader(
-    "🤖 Market Intelligence Report"
-)
-
-st.write(
-    response.text
-)
-
-# ------------------------------------------------
-# EVIDENCE SCORING ENGINE
-# ------------------------------------------------
-
-evidence_scores = extract_evidence_scores(
-    response.text
-)
-
-if evidence_scores:
-
-    evidence_result = build_evidence_summary(
-        **evidence_scores
-    )
-
-    st.divider()
-
-    st.subheader(
-        "📊 Evidence-Weighted Scenario Probabilities"
-    )
-
-    probabilities = evidence_result["probabilities"]
-
-    st.write(
-        format_probability_report(
-            probabilities
-        )
-    )
-
-    st.caption(
-        "These percentages are calculated from the "
-        "evidence scores returned by the AI. They are "
-        "analytical scenario estimates, not predictions."
-    )
-
-else:
-
-    st.warning(
-        "The AI did not return usable evidence scores, "
-        "so evidence-weighted probabilities could not "
-        "be calculated."
+                    "🤖 Market Intelligence Report"
                 )
+
+                st.write(
+                    response.text
+                )
+
+
+                # ------------------------------------------------
+                # EVIDENCE SCORING ENGINE
+                # ------------------------------------------------
+
+                evidence_scores = extract_evidence_scores(
+                    response.text
+                )
+
+
+                if evidence_scores:
+
+                    evidence_result = build_evidence_summary(
+                        **evidence_scores
+                    )
+
+
+                    st.divider()
+
+                    st.subheader(
+                        "📊 Evidence-Weighted Scenario Probabilities"
+                    )
+
+
+                    probabilities = (
+                        evidence_result["probabilities"]
+                    )
+
+
+                    st.write(
+                        format_probability_report(
+                            probabilities
+                        )
+                    )
+
+
+                    # --------------------------------------------
+                    # SHOW RAW EVIDENCE SCORES
+                    # --------------------------------------------
+
+                    with st.expander(
+                        "🔬 View Evidence Scores",
+                        expanded=False
+                    ):
+
+                        st.write(
+                            "Bullish evidence score:",
+                            evidence_result[
+                                "bullish_score"
+                            ]
+                        )
+
+                        st.write(
+                            "Neutral baseline score:",
+                            evidence_result[
+                                "neutral_score"
+                            ]
+                        )
+
+                        st.write(
+                            "Bearish evidence score:",
+                            evidence_result[
+                                "bearish_score"
+                            ]
+                        )
+
+                        st.json(
+                            evidence_scores
+                        )
+
+
+                    st.caption(
+                        "These percentages are calculated "
+                        "from evidence scores returned by "
+                        "the AI. They are analytical scenario "
+                        "estimates, not predictions."
+                    )
+
+
+                else:
+
+                    st.warning(
+                        "The AI did not return usable "
+                        "evidence scores, so evidence-weighted "
+                        "probabilities could not be calculated."
+                    )
+
 
             except Exception as e:
 
@@ -383,5 +486,6 @@ else:
 
     st.info(
         "Upload a chart screenshot above to begin."
-                )                    
+)
+
                 
