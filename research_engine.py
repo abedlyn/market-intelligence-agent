@@ -1,4 +1,32 @@
-def build_research_prompt(asset):
+def normalize_crypto_id(asset_name):
+    """
+    Convert common crypto symbols/names into CoinGecko IDs.
+    """
+
+    mapping = {
+        "BTC": "bitcoin",
+        "BITCOIN": "bitcoin",
+        "ETH": "ethereum",
+        "ETHEREUM": "ethereum",
+        "SOL": "solana",
+        "SOLANA": "solana",
+        "BNB": "binancecoin",
+        "XRP": "ripple",
+        "ADA": "cardano",
+        "DOGE": "dogecoin",
+        "DOGECOIN": "dogecoin",
+        "AVAX": "avalanche-2",
+        "DOT": "polkadot",
+        "LINK": "chainlink",
+        "MATIC": "matic-network"
+    }
+
+    cleaned = asset_name.upper().strip()
+
+    return mapping.get(cleaned)
+
+
+def build_research_prompt(asset): 
     """
     Creates the research instructions for the AI.
     """
