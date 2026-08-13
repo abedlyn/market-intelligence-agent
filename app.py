@@ -23,6 +23,10 @@ from evidence_engine import (
 )
 
 
+# ============================================================
+# PAGE CONFIGURATION
+# ============================================================
+
 st.set_page_config(
     page_title="Market Intelligence Agent",
     page_icon="📊",
@@ -30,14 +34,23 @@ st.set_page_config(
 )
 
 
+# ============================================================
+# APP HEADER
+# ============================================================
+
 st.title("📊 Market Intelligence Agent")
 
 st.write(
-    "Upload a stock or cryptocurrency chart for AI-powered market analysis."
+    "Upload a stock or cryptocurrency chart for "
+    "AI-powered market analysis."
 )
 
 st.divider()
 
+
+# ============================================================
+# CHART UPLOAD
+# ============================================================
 
 uploaded_file = st.file_uploader(
     "📷 Upload your chart screenshot",
@@ -62,23 +75,24 @@ if uploaded_file is not None:
     ):
 
         with st.spinner(
-            "🤖 AI is analyzing the chart and gathering live market intelligence..."
+            "🤖 AI is analyzing the chart and gathering "
+            "live market intelligence..."
         ):
 
             try:
 
-                # ------------------------------------------------
+                # ====================================================
                 # CONNECT TO GEMINI
-                # ------------------------------------------------
+                # ====================================================
 
                 client = genai.Client(
                     api_key=st.secrets["GEMINI_API_KEY"]
                 )
 
 
-                # ------------------------------------------------
+                # ====================================================
                 # READ IMAGE
-                # ------------------------------------------------
+                # ====================================================
 
                 image_bytes = uploaded_file.getvalue()
 
@@ -88,10 +102,9 @@ if uploaded_file is not None:
                 )
 
 
-                # ------------------------------------------------
-                # FIRST AI PASS:
-                # IDENTIFY THE ASSET
-                # ------------------------------------------------
+                # ====================================================
+                # IDENTIFY ASSET
+                # ====================================================
 
                 identification_prompt = """
 Look carefully at this financial chart.
@@ -116,12 +129,14 @@ If you cannot identify it, return UNKNOWN.
 """
 
 
-                identification_response = client.models.generate_content(
-                    model="gemini-3.6-flash",
-                    contents=[
-                        image_part,
-                        identification_prompt
-                    ]
+                identification_response = (
+                    client.models.generate_content(
+                        model="gemini-3.6-flash",
+                        contents=[
+                            image_part,
+                            identification_prompt
+                        ]
+                    )
                 )
 
 
@@ -135,18 +150,18 @@ If you cannot identify it, return UNKNOWN.
                 )
 
 
-                # ------------------------------------------------
+                # ====================================================
                 # NORMALIZE CRYPTO SYMBOL
-                # ------------------------------------------------
+                # ====================================================
 
                 crypto_id = normalize_crypto_id(
                     asset_symbol
                 )
 
 
-                # ------------------------------------------------
-                # GET LIVE CRYPTO MARKET DATA
-                # ------------------------------------------------
+                # ====================================================
+                # LIVE MARKET DATA
+                # ====================================================
 
                 market_context = ""
 
@@ -207,9 +222,9 @@ chart and clearly identify this limitation.
 """
 
 
-                # ------------------------------------------------
-                # GET LIVE FINANCIAL NEWS
-                # ------------------------------------------------
+                # ====================================================
+                # LIVE FINANCIAL NEWS
+                # ====================================================
 
                 news_context = ""
 
@@ -227,21 +242,37 @@ chart and clearly identify this limitation.
                             f"CRYPTO:{asset_symbol}"
                         )
 
+
+                    # ------------------------------------------------
+                    # RETRIEVE NEWS
+                    # ------------------------------------------------
+
                     news_data = get_market_news(
-    news_symbol,
-    alpha_vantage_key,
-    limit=10
-)
+                        news_symbol,
+                        alpha_vantage_key,
+                        limit=10
+                    )
 
-processed_news = process_news_data(
-    news_data
-)
 
-formatted_news = format_news_for_ai(
-    processed_news
-)
+                    # ------------------------------------------------
+                    # PROCESS NEWS
+                    # ------------------------------------------------
 
-news_context = f"""
+                    processed_news = process_news_data(
+                        news_data
+                    )
+
+
+                    # ------------------------------------------------
+                    # FORMAT NEWS FOR AI
+                    # ------------------------------------------------
+
+                    formatted_news = format_news_for_ai(
+                        processed_news
+                    )
+
+
+                    news_context = f"""
 LIVE FINANCIAL NEWS
 
 The following news items were retrieved
@@ -250,6 +281,7 @@ from an external financial-news source.
 {formatted_news}
 
 IMPORTANT:
+
 Treat reported facts as external evidence.
 
 Do not assume that every headline is accurate
@@ -257,7 +289,10 @@ or that every article represents market consensus.
 
 Distinguish reported facts from analyst opinions
 and from your own inference.
+
+Do not fabricate news.
 """
+
 
                 except Exception as news_error:
 
@@ -275,18 +310,18 @@ Clearly state that live news was unavailable.
 """
 
 
-                # ------------------------------------------------
+                # ====================================================
                 # BUILD RESEARCH PROMPT
-                # ------------------------------------------------
+                # ====================================================
 
                 research_prompt = build_research_prompt(
                     asset_symbol
                 )
 
 
-                # ------------------------------------------------
+                # ====================================================
                 # FINAL RESEARCH PROMPT
-                # ------------------------------------------------
+                # ====================================================
 
                 final_prompt = f"""
 {research_prompt}
@@ -304,6 +339,7 @@ You are analyzing:
 
 
 Separate your conclusions into:
+
 
 1. OBSERVED EVIDENCE
 
@@ -348,11 +384,17 @@ the strongest evidence and why.
 Do not treat this as a prediction.
 
 
-IMPORTANT:
+IMPORTANT
 
-Do NOT fabricate news, prices, events,
-institutional activity, economic data,
-sentiment, or analyst opinions.
+Do NOT fabricate:
+
+- news
+- prices
+- events
+- institutional activity
+- economic data
+- sentiment
+- analyst opinions
 
 If information is unavailable,
 explicitly say so.
@@ -365,7 +407,9 @@ ASSUMPTION
 UNCERTAINTY
 
 
+====================================================
 EVIDENCE SCORING
+====================================================
 
 After completing your analysis, assign
 evidence strength scores from 0 to 10
@@ -386,12 +430,16 @@ Use this exact JSON format:
 {{
   "technical_bullish": 0,
   "technical_bearish": 0,
+
   "momentum_bullish": 0,
   "momentum_bearish": 0,
+
   "sentiment_bullish": 0,
   "sentiment_bearish": 0,
+
   "fundamental_bullish": 0,
   "fundamental_bearish": 0,
+
   "macro_bullish": 0,
   "macro_bearish": 0
 }}
@@ -407,9 +455,9 @@ If evidence is unavailable,
 use 0.
 
 
-End with:
-
+====================================================
 WHAT WOULD CHANGE THIS ANALYSIS
+====================================================
 
 List the specific new evidence or
 price behavior that would cause the
@@ -417,9 +465,9 @@ assessment to change.
 """
 
 
-                # ------------------------------------------------
+                # ====================================================
                 # FINAL AI ANALYSIS
-                # ------------------------------------------------
+                # ====================================================
 
                 response = client.models.generate_content(
                     model="gemini-3.6-flash",
@@ -430,18 +478,18 @@ assessment to change.
                 )
 
 
-                # ------------------------------------------------
-                # DISPLAY ASSET
-                # ------------------------------------------------
+                # ====================================================
+                # DISPLAY IDENTIFIED ASSET
+                # ====================================================
 
                 st.success(
                     f"Asset identified: {asset_symbol}"
                 )
 
 
-                # ------------------------------------------------
+                # ====================================================
                 # DISPLAY MARKET DATA
-                # ------------------------------------------------
+                # ====================================================
 
                 with st.expander(
                     "📡 Market Data",
@@ -453,23 +501,74 @@ assessment to change.
                     )
 
 
-                # ------------------------------------------------
-                # DISPLAY NEWS DATA
-                # ------------------------------------------------
+                # ====================================================
+                # DISPLAY PROCESSED NEWS
+                # ====================================================
 
                 with st.expander(
                     "📰 Live Financial News",
                     expanded=False
                 ):
 
-                    st.write(
-                        news_context
-                    )
+                    if processed_news:
+
+                        for index, article in enumerate(
+                            processed_news,
+                            start=1
+                        ):
+
+                            st.markdown(
+                                f"### {index}. "
+                                f"{article['title']}"
+                            )
+
+                            st.write(
+                                f"**Source:** "
+                                f"{article['source']}"
+                            )
+
+                            st.write(
+                                f"**Published:** "
+                                f"{article['published']}"
+                            )
+
+                            st.write(
+                                f"**Sentiment:** "
+                                f"{article['sentiment']}"
+                            )
+
+                            st.write(
+                                f"**Sentiment Score:** "
+                                f"{article['sentiment_score']}"
+                            )
+
+                            st.write(
+                                f"**Relevance Score:** "
+                                f"{article['relevance_score']}"
+                            )
+
+                            st.write(
+                                article["summary"]
+                            )
+
+                            if article["url"]:
+
+                                st.write(
+                                    article["url"]
+                                )
+
+                            st.divider()
+
+                    else:
+
+                        st.info(
+                            "No relevant live news was found."
+                        )
 
 
-                # ------------------------------------------------
+                # ====================================================
                 # DISPLAY AI REPORT
-                # ------------------------------------------------
+                # ====================================================
 
                 st.divider()
 
@@ -482,31 +581,38 @@ assessment to change.
                 )
 
 
-                # ------------------------------------------------
+                # ====================================================
                 # EVIDENCE SCORING ENGINE
-                # ------------------------------------------------
+                # ====================================================
 
-                evidence_scores = extract_evidence_scores(
-                    response.text
+                evidence_scores = (
+                    extract_evidence_scores(
+                        response.text
+                    )
                 )
 
 
                 if evidence_scores:
 
-                    evidence_result = build_evidence_summary(
-                        **evidence_scores
+                    evidence_result = (
+                        build_evidence_summary(
+                            **evidence_scores
+                        )
                     )
 
 
                     st.divider()
 
                     st.subheader(
-                        "📊 Evidence-Weighted Scenario Probabilities"
+                        "📊 Evidence-Weighted "
+                        "Scenario Probabilities"
                     )
 
 
                     probabilities = (
-                        evidence_result["probabilities"]
+                        evidence_result[
+                            "probabilities"
+                        ]
                     )
 
 
@@ -517,9 +623,9 @@ assessment to change.
                     )
 
 
-                    # --------------------------------------------
-                    # SHOW EVIDENCE SCORES
-                    # --------------------------------------------
+                    # ------------------------------------------------
+                    # EVIDENCE DETAILS
+                    # ------------------------------------------------
 
                     with st.expander(
                         "🔬 View Evidence Scores",
@@ -553,8 +659,9 @@ assessment to change.
 
 
                     st.caption(
-                        "These percentages are evidence-weighted "
-                        "scenario estimates. They are not predictions "
+                        "These percentages are "
+                        "evidence-weighted scenario "
+                        "estimates. They are not predictions "
                         "or guarantees."
                     )
 
@@ -563,10 +670,15 @@ assessment to change.
 
                     st.warning(
                         "The AI did not return usable "
-                        "evidence scores, so evidence-weighted "
-                        "probabilities could not be calculated."
+                        "evidence scores, so "
+                        "evidence-weighted probabilities "
+                        "could not be calculated."
                     )
 
+
+            # ========================================================
+            # ERROR HANDLING
+            # ========================================================
 
             except Exception as e:
 
@@ -575,8 +687,12 @@ assessment to change.
                 )
 
 
+# ================================================================
+# NO CHART UPLOADED
+# ================================================================
+
 else:
 
     st.info(
         "Upload a chart screenshot above to begin."
-) 
+)
