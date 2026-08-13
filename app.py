@@ -2,7 +2,7 @@ import streamlit as st
 from research_engine import build_research_prompt
 from google import genai
 from google.genai import types
-
+from market_data import get_market_data
 st.set_page_config(
     page_title="Market Intelligence Agent",
     page_icon="📊",
