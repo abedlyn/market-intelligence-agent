@@ -9,6 +9,8 @@ from research_engine import (
 
 from market_data import get_market_data
 
+from news_research import get_market_news
+
 from evidence_engine import (
     extract_evidence_scores,
     build_evidence_summary,
