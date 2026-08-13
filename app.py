@@ -255,6 +255,39 @@ WHAT WOULD CHANGE THIS ANALYSIS
 
 List the specific new evidence or price behavior that would
 cause the assessment to change.
+EVIDENCE SCORING
+
+After completing your analysis, assign evidence strength scores
+from 0 to 10 for each category.
+
+0 = no evidence
+1-2 = very weak
+3-4 = weak
+5-6 = moderate
+7-8 = strong
+9-10 = very strong
+
+Score BOTH bullish and bearish evidence.
+
+Use this exact JSON format:
+
+{
+  "technical_bullish": 0,
+  "technical_bearish": 0,
+  "momentum_bullish": 0,
+  "momentum_bearish": 0,
+  "sentiment_bullish": 0,
+  "sentiment_bearish": 0,
+  "fundamental_bullish": 0,
+  "fundamental_bearish": 0,
+  "macro_bullish": 0,
+  "macro_bearish": 0
+}
+
+Return the JSON at the very end of your response.
+
+Do not invent evidence simply to give a score.
+If evidence is unavailable, use 0. 
 """
 
 
