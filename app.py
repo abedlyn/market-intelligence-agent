@@ -323,13 +323,54 @@ If evidence is unavailable, use 0.
                 st.divider()
 
                 st.subheader(
-                    "🤖 Market Intelligence Report"
-                )
+    "🤖 Market Intelligence Report"
+)
 
-                st.write(
-                    response.text
-                )
+st.write(
+    response.text
+)
 
+# ------------------------------------------------
+# EVIDENCE SCORING ENGINE
+# ------------------------------------------------
+
+evidence_scores = extract_evidence_scores(
+    response.text
+)
+
+if evidence_scores:
+
+    evidence_result = build_evidence_summary(
+        **evidence_scores
+    )
+
+    st.divider()
+
+    st.subheader(
+        "📊 Evidence-Weighted Scenario Probabilities"
+    )
+
+    probabilities = evidence_result["probabilities"]
+
+    st.write(
+        format_probability_report(
+            probabilities
+        )
+    )
+
+    st.caption(
+        "These percentages are calculated from the "
+        "evidence scores returned by the AI. They are "
+        "analytical scenario estimates, not predictions."
+    )
+
+else:
+
+    st.warning(
+        "The AI did not return usable evidence scores, "
+        "so evidence-weighted probabilities could not "
+        "be calculated."
+                )
 
             except Exception as e:
 
