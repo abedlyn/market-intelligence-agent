@@ -59,6 +59,9 @@ def build_evidence_summary(
 ):
     """
     Combine evidence from different research categories.
+
+    Neutral probability increases when bullish and bearish
+    evidence are relatively balanced.
     """
 
     bullish_score = (
@@ -77,7 +80,28 @@ def build_evidence_summary(
         + macro_bearish
     )
 
-    neutral_score = 1
+    total_directional = (
+        bullish_score + bearish_score
+    )
+
+    if total_directional == 0:
+
+        neutral_score = 10
+
+    else:
+
+        difference = abs(
+            bullish_score - bearish_score
+        )
+
+        balance = 1 - (
+            difference / total_directional
+        )
+
+        neutral_score = max(
+            1,
+            balance * total_directional
+        )
 
     probabilities = calculate_scenario_probabilities(
         bullish_score,
@@ -86,9 +110,9 @@ def build_evidence_summary(
     )
 
     return {
-        "bullish_score": bullish_score,
-        "bearish_score": bearish_score,
-        "neutral_score": neutral_score,
+        "bullish_score": round(bullish_score, 2),
+        "bearish_score": round(bearish_score, 2),
+        "neutral_score": round(neutral_score, 2),
         "probabilities": probabilities
     }
 
