@@ -11,6 +11,11 @@ from market_data import get_market_data
 
 from news_research import get_market_news
 
+from news_processor import (
+    process_news_data,
+    format_news_for_ai
+)
+
 from evidence_engine import (
     extract_evidence_scores,
     build_evidence_summary,
@@ -223,21 +228,28 @@ chart and clearly identify this limitation.
                         )
 
                     news_data = get_market_news(
-                        news_symbol,
-                        alpha_vantage_key,
-                        limit=10
-                    )
+    news_symbol,
+    alpha_vantage_key,
+    limit=10
+)
 
-                    news_context = f"""
+processed_news = process_news_data(
+    news_data
+)
+
+formatted_news = format_news_for_ai(
+    processed_news
+)
+
+news_context = f"""
 LIVE FINANCIAL NEWS
 
-The following information was retrieved
+The following news items were retrieved
 from an external financial-news source.
 
-{news_data}
+{formatted_news}
 
 IMPORTANT:
-
 Treat reported facts as external evidence.
 
 Do not assume that every headline is accurate
