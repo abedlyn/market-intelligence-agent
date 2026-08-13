@@ -57,7 +57,7 @@ if uploaded_file is not None:
     ):
 
         with st.spinner(
-            "🤖 AI is analyzing the chart and gathering market data..."
+            "🤖 AI is analyzing the chart and gathering live market intelligence..."
         ):
 
             try:
@@ -137,43 +137,6 @@ If you cannot identify it, return UNKNOWN.
                 crypto_id = normalize_crypto_id(
                     asset_symbol
                 )
-                # ------------------------------------------------
-# GET LIVE NEWS
-# ------------------------------------------------
-
-news_context = ""
-
-try:
-
-    alpha_vantage_key = st.secrets[
-        "ALPHA_VANTAGE_API_KEY"
-    ]
-
-    news_symbol = asset_symbol
-
-    if crypto_id:
-        news_symbol = f"CRYPTO:{asset_symbol}"
-
-    news_data = get_market_news(
-        news_symbol,
-        alpha_vantage_key,
-        limit=10
-    )
-
-    news_context = str(news_data)
-
-except Exception as news_error:
-
-    news_context = f"""
-LIVE NEWS
-
-The news-data request failed.
-
-Error:
-{news_error}
-
-Do not invent current news.
-"""
 
 
                 # ------------------------------------------------
@@ -240,6 +203,67 @@ chart and clearly identify this limitation.
 
 
                 # ------------------------------------------------
+                # GET LIVE FINANCIAL NEWS
+                # ------------------------------------------------
+
+                news_context = ""
+
+                try:
+
+                    alpha_vantage_key = st.secrets[
+                        "ALPHA_VANTAGE_API_KEY"
+                    ]
+
+                    news_symbol = asset_symbol
+
+                    if crypto_id:
+
+                        news_symbol = (
+                            f"CRYPTO:{asset_symbol}"
+                        )
+
+                    news_data = get_market_news(
+                        news_symbol,
+                        alpha_vantage_key,
+                        limit=10
+                    )
+
+                    news_context = f"""
+LIVE FINANCIAL NEWS
+
+The following information was retrieved
+from an external financial-news source.
+
+{news_data}
+
+IMPORTANT:
+
+Treat reported facts as external evidence.
+
+Do not assume that every headline is accurate
+or that every article represents market consensus.
+
+Distinguish reported facts from analyst opinions
+and from your own inference.
+"""
+
+                except Exception as news_error:
+
+                    news_context = f"""
+LIVE FINANCIAL NEWS
+
+The news-data request failed.
+
+Error:
+{news_error}
+
+Do not invent current news.
+
+Clearly state that live news was unavailable.
+"""
+
+
+                # ------------------------------------------------
                 # BUILD RESEARCH PROMPT
                 # ------------------------------------------------
 
@@ -247,6 +271,10 @@ chart and clearly identify this limitation.
                     asset_symbol
                 )
 
+
+                # ------------------------------------------------
+                # FINAL RESEARCH PROMPT
+                # ------------------------------------------------
 
                 final_prompt = f"""
 {research_prompt}
@@ -267,14 +295,14 @@ Separate your conclusions into:
 
 1. OBSERVED EVIDENCE
 
-Things directly visible in the chart
-or supplied market data.
+Things directly visible in the chart,
+supplied market data, or retrieved news.
 
 
 2. INFERENCES
 
 Reasonable conclusions derived
-from the evidence.
+from the available evidence.
 
 
 3. UNCERTAINTIES
@@ -300,28 +328,29 @@ Explain the conditions that could
 support this scenario.
 
 
-7. SCENARIO PROBABILITIES
+7. SCENARIO ASSESSMENT
 
-You may discuss your initial assessment,
-but the final displayed probabilities
-will be calculated separately by the
-evidence-scoring engine.
+Explain which scenario currently has
+the strongest evidence and why.
+
+Do not treat this as a prediction.
 
 
 IMPORTANT:
 
-These probabilities are NOT predictions
-or guarantees.
-
-They are evidence-weighted analytical
-estimates.
-
-Do not fabricate news, prices, events,
+Do NOT fabricate news, prices, events,
 institutional activity, economic data,
-or sentiment.
+sentiment, or analyst opinions.
 
 If information is unavailable,
 explicitly say so.
+
+Clearly distinguish:
+
+FACT
+INFERENCE
+ASSUMPTION
+UNCERTAINTY
 
 
 EVIDENCE SCORING
@@ -402,16 +431,28 @@ assessment to change.
                 # DISPLAY MARKET DATA
                 # ------------------------------------------------
 
-                if market_context:
+                with st.expander(
+                    "📡 Market Data",
+                    expanded=False
+                ):
 
-                    with st.expander(
-                        "📡 Market Data Retrieved",
-                        expanded=False
-                    ):
+                    st.write(
+                        market_context
+                    )
 
-                        st.write(
-                            market_context
-                        )
+
+                # ------------------------------------------------
+                # DISPLAY NEWS DATA
+                # ------------------------------------------------
+
+                with st.expander(
+                    "📰 Live Financial News",
+                    expanded=False
+                ):
+
+                    st.write(
+                        news_context
+                    )
 
 
                 # ------------------------------------------------
@@ -465,7 +506,7 @@ assessment to change.
 
 
                     # --------------------------------------------
-                    # SHOW RAW EVIDENCE SCORES
+                    # SHOW EVIDENCE SCORES
                     # --------------------------------------------
 
                     with st.expander(
@@ -481,7 +522,7 @@ assessment to change.
                         )
 
                         st.write(
-                            "Neutral baseline score:",
+                            "Neutral / uncertainty score:",
                             evidence_result[
                                 "neutral_score"
                             ]
@@ -500,10 +541,9 @@ assessment to change.
 
 
                     st.caption(
-                        "These percentages are calculated "
-                        "from evidence scores returned by "
-                        "the AI. They are analytical scenario "
-                        "estimates, not predictions."
+                        "These percentages are evidence-weighted "
+                        "scenario estimates. They are not predictions "
+                        "or guarantees."
                     )
 
 
@@ -527,6 +567,4 @@ else:
 
     st.info(
         "Upload a chart screenshot above to begin."
-)
-
-                
+) 
