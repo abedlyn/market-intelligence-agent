@@ -1,3 +1,5 @@
+
+
 import streamlit as st
 from google import genai
 from google.genai import types
@@ -14,6 +16,11 @@ from news_research import get_market_news
 from news_processor import (
     process_news_data,
     format_news_for_ai
+)
+
+from macro_research import (
+    get_macro_data,
+    format_macro_for_ai
 )
 
 from evidence_engine import (
@@ -128,7 +135,6 @@ Do not provide anything else.
 If you cannot identify it, return UNKNOWN.
 """
 
-
                 identification_response = (
                     client.models.generate_content(
                         model="gemini-3.6-flash",
@@ -228,6 +234,8 @@ chart and clearly identify this limitation.
 
                 news_context = ""
 
+                processed_news = []
+
                 try:
 
                     alpha_vantage_key = st.secrets[
@@ -311,6 +319,32 @@ Clearly state that live news was unavailable.
 
 
                 # ====================================================
+                # MACROECONOMIC CONTEXT
+                # ====================================================
+
+                try:
+
+                    macro_data = get_macro_data()
+
+                    macro_context = format_macro_for_ai(
+                        macro_data
+                    )
+
+                except Exception as macro_error:
+
+                    macro_context = f"""
+MACROECONOMIC DATA
+
+The macroeconomic data request failed.
+
+Error:
+{macro_error}
+
+Do not invent macroeconomic conditions.
+"""
+
+
+                # ====================================================
                 # BUILD RESEARCH PROMPT
                 # ====================================================
 
@@ -330,6 +364,8 @@ Clearly state that live news was unavailable.
 
 {news_context}
 
+{macro_context}
+
 
 ADDITIONAL INSTRUCTIONS
 
@@ -344,7 +380,8 @@ Separate your conclusions into:
 1. OBSERVED EVIDENCE
 
 Things directly visible in the chart,
-supplied market data, or retrieved news.
+supplied market data, retrieved news,
+or available macroeconomic information.
 
 
 2. INFERENCES
@@ -395,6 +432,7 @@ Do NOT fabricate:
 - economic data
 - sentiment
 - analyst opinions
+- macroeconomic conditions
 
 If information is unavailable,
 explicitly say so.
@@ -502,7 +540,7 @@ assessment to change.
 
 
                 # ====================================================
-                # DISPLAY PROCESSED NEWS
+                # DISPLAY FINANCIAL NEWS
                 # ====================================================
 
                 with st.expander(
@@ -564,6 +602,20 @@ assessment to change.
                         st.info(
                             "No relevant live news was found."
                         )
+
+
+                # ====================================================
+                # DISPLAY MACROECONOMIC CONTEXT
+                # ====================================================
+
+                with st.expander(
+                    "🌍 Macroeconomic Context",
+                    expanded=False
+                ):
+
+                    st.write(
+                        macro_context
+                    )
 
 
                 # ====================================================
@@ -695,4 +747,4 @@ else:
 
     st.info(
         "Upload a chart screenshot above to begin."
-)
+    )
