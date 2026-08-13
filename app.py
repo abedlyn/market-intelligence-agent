@@ -9,6 +9,12 @@ from research_engine import (
 
 from market_data import get_market_data
 
+from evidence_engine import (
+    extract_evidence_scores,
+    build_evidence_summary,
+    format_probability_report
+)
+
 
 st.set_page_config(
     page_title="Market Intelligence Agent",
