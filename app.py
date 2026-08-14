@@ -1,5 +1,3 @@
-
-
 import streamlit as st
 from google import genai
 from google.genai import types
@@ -21,6 +19,11 @@ from news_processor import (
 from macro_research import (
     get_macro_data,
     format_macro_for_ai
+)
+
+from sentiment_research import (
+    calculate_news_sentiment,
+    format_sentiment_for_ai
 )
 
 from evidence_engine import (
@@ -251,10 +254,6 @@ chart and clearly identify this limitation.
                         )
 
 
-                    # ------------------------------------------------
-                    # RETRIEVE NEWS
-                    # ------------------------------------------------
-
                     news_data = get_market_news(
                         news_symbol,
                         alpha_vantage_key,
@@ -262,18 +261,10 @@ chart and clearly identify this limitation.
                     )
 
 
-                    # ------------------------------------------------
-                    # PROCESS NEWS
-                    # ------------------------------------------------
-
                     processed_news = process_news_data(
                         news_data
                     )
 
-
-                    # ------------------------------------------------
-                    # FORMAT NEWS FOR AI
-                    # ------------------------------------------------
 
                     formatted_news = format_news_for_ai(
                         processed_news
@@ -315,6 +306,38 @@ Error:
 Do not invent current news.
 
 Clearly state that live news was unavailable.
+"""
+
+
+                # ====================================================
+                # MARKET SENTIMENT
+                # ====================================================
+
+                try:
+
+                    sentiment_data = (
+                        calculate_news_sentiment(
+                            processed_news
+                        )
+                    )
+
+                    sentiment_context = (
+                        format_sentiment_for_ai(
+                            sentiment_data
+                        )
+                    )
+
+                except Exception as sentiment_error:
+
+                    sentiment_context = f"""
+MARKET SENTIMENT
+
+The sentiment calculation failed.
+
+Error:
+{sentiment_error}
+
+Do not invent market sentiment.
 """
 
 
@@ -364,6 +387,8 @@ Do not invent macroeconomic conditions.
 
 {news_context}
 
+{sentiment_context}
+
 {macro_context}
 
 
@@ -374,54 +399,75 @@ You are analyzing:
 {asset_symbol}
 
 
-Separate your conclusions into:
-
-
+====================================================
 1. OBSERVED EVIDENCE
+====================================================
 
-Things directly visible in the chart,
-supplied market data, retrieved news,
-or available macroeconomic information.
+Identify things directly visible in:
+
+- the chart
+- supplied market data
+- retrieved financial news
+- market sentiment
+- macroeconomic data
 
 
+====================================================
 2. INFERENCES
+====================================================
 
-Reasonable conclusions derived
+Explain reasonable conclusions derived
 from the available evidence.
 
 
+====================================================
 3. UNCERTAINTIES
+====================================================
 
-Things that cannot be established reliably.
+Identify information that cannot be established
+reliably.
+
+Do not fill gaps with assumptions presented
+as facts.
 
 
+====================================================
 4. BULLISH SCENARIO
+====================================================
 
-Explain the conditions that could
-support this scenario.
+Explain the conditions that could support
+a bullish scenario.
 
 
+====================================================
 5. NEUTRAL / RANGE SCENARIO
+====================================================
 
-Explain the conditions that could
-support this scenario.
+Explain the conditions that could support
+a neutral or range-bound scenario.
 
 
+====================================================
 6. BEARISH SCENARIO
+====================================================
 
-Explain the conditions that could
-support this scenario.
+Explain the conditions that could support
+a bearish scenario.
 
 
+====================================================
 7. SCENARIO ASSESSMENT
+====================================================
 
-Explain which scenario currently has
-the strongest evidence and why.
+Explain which scenario currently has the
+strongest evidence and why.
 
-Do not treat this as a prediction.
+Do not treat this as a guaranteed prediction.
 
 
-IMPORTANT
+====================================================
+IMPORTANT EVIDENCE RULES
+====================================================
 
 Do NOT fabricate:
 
@@ -443,6 +489,21 @@ FACT
 INFERENCE
 ASSUMPTION
 UNCERTAINTY
+
+
+====================================================
+SENTIMENT RULE
+====================================================
+
+The sentiment percentage is derived from
+retrieved financial-news sentiment.
+
+It is supporting evidence only.
+
+Do not treat sentiment as a prediction.
+
+Do not allow sentiment alone to determine
+the final market scenario.
 
 
 ====================================================
@@ -517,7 +578,7 @@ assessment to change.
 
 
                 # ====================================================
-                # DISPLAY IDENTIFIED ASSET
+                # IDENTIFIED ASSET
                 # ====================================================
 
                 st.success(
@@ -526,7 +587,7 @@ assessment to change.
 
 
                 # ====================================================
-                # DISPLAY MARKET DATA
+                # MARKET DATA DISPLAY
                 # ====================================================
 
                 with st.expander(
@@ -540,7 +601,7 @@ assessment to change.
 
 
                 # ====================================================
-                # DISPLAY FINANCIAL NEWS
+                # FINANCIAL NEWS DISPLAY
                 # ====================================================
 
                 with st.expander(
@@ -605,7 +666,21 @@ assessment to change.
 
 
                 # ====================================================
-                # DISPLAY MACROECONOMIC CONTEXT
+                # MARKET SENTIMENT DISPLAY
+                # ====================================================
+
+                with st.expander(
+                    "📣 Market Sentiment",
+                    expanded=False
+                ):
+
+                    st.write(
+                        sentiment_context
+                    )
+
+
+                # ====================================================
+                # MACROECONOMIC DISPLAY
                 # ====================================================
 
                 with st.expander(
@@ -619,7 +694,7 @@ assessment to change.
 
 
                 # ====================================================
-                # DISPLAY AI REPORT
+                # AI REPORT
                 # ====================================================
 
                 st.divider()
@@ -675,9 +750,9 @@ assessment to change.
                     )
 
 
-                    # ------------------------------------------------
+                    # =================================================
                     # EVIDENCE DETAILS
-                    # ------------------------------------------------
+                    # =================================================
 
                     with st.expander(
                         "🔬 View Evidence Scores",
@@ -747,4 +822,4 @@ else:
 
     st.info(
         "Upload a chart screenshot above to begin."
-    )
+                )
