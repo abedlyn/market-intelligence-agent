@@ -26,6 +26,10 @@ from sentiment_research import (
     format_sentiment_for_ai
 )
 
+from adversarial_engine import (
+    build_adversarial_prompt
+)
+
 from evidence_engine import (
     extract_evidence_scores,
     build_evidence_summary,
@@ -148,7 +152,6 @@ If you cannot identify it, return UNKNOWN.
                     )
                 )
 
-
                 asset_symbol = (
                     identification_response.text
                     .strip()
@@ -214,7 +217,6 @@ Error:
 Do not invent current market data.
 """
 
-
                 else:
 
                     market_context = """
@@ -253,23 +255,19 @@ chart and clearly identify this limitation.
                             f"CRYPTO:{asset_symbol}"
                         )
 
-
                     news_data = get_market_news(
                         news_symbol,
                         alpha_vantage_key,
                         limit=10
                     )
 
-
                     processed_news = process_news_data(
                         news_data
                     )
 
-
                     formatted_news = format_news_for_ai(
                         processed_news
                     )
-
 
                     news_context = f"""
 LIVE FINANCIAL NEWS
@@ -291,7 +289,6 @@ and from your own inference.
 
 Do not fabricate news.
 """
-
 
                 except Exception as news_error:
 
@@ -368,7 +365,7 @@ Do not invent macroeconomic conditions.
 
 
                 # ====================================================
-                # BUILD RESEARCH PROMPT
+                # BUILD GENERAL RESEARCH PROMPT
                 # ====================================================
 
                 research_prompt = build_research_prompt(
@@ -377,7 +374,7 @@ Do not invent macroeconomic conditions.
 
 
                 # ====================================================
-                # FINAL RESEARCH PROMPT
+                # GENERAL AI RESEARCH
                 # ====================================================
 
                 final_prompt = f"""
@@ -466,7 +463,7 @@ Do not treat this as a guaranteed prediction.
 
 
 ====================================================
-IMPORTANT EVIDENCE RULES
+EVIDENCE RULES
 ====================================================
 
 Do NOT fabricate:
@@ -492,27 +489,11 @@ UNCERTAINTY
 
 
 ====================================================
-SENTIMENT RULE
-====================================================
-
-The sentiment percentage is derived from
-retrieved financial-news sentiment.
-
-It is supporting evidence only.
-
-Do not treat sentiment as a prediction.
-
-Do not allow sentiment alone to determine
-the final market scenario.
-
-
-====================================================
 EVIDENCE SCORING
 ====================================================
 
 After completing your analysis, assign
-evidence strength scores from 0 to 10
-for each category.
+evidence strength scores from 0 to 10.
 
 0 = no evidence
 1-2 = very weak
@@ -564,10 +545,6 @@ assessment to change.
 """
 
 
-                # ====================================================
-                # FINAL AI ANALYSIS
-                # ====================================================
-
                 response = client.models.generate_content(
                     model="gemini-3.6-flash",
                     contents=[
@@ -578,7 +555,34 @@ assessment to change.
 
 
                 # ====================================================
-                # IDENTIFIED ASSET
+                # ADVERSARIAL BULL VS BEAR ANALYSIS
+                # ====================================================
+
+                adversarial_prompt = build_adversarial_prompt(
+                    asset_symbol=asset_symbol,
+                    market_context=market_context,
+                    news_context=news_context,
+                    sentiment_context=sentiment_context,
+                    macro_context=macro_context
+                )
+
+
+                with st.spinner(
+                    "⚔️ Challenging the bullish and bearish cases..."
+                ):
+
+                    adversarial_response = (
+                        client.models.generate_content(
+                            model="gemini-3.6-flash",
+                            contents=[
+                                adversarial_prompt
+                            ]
+                        )
+                    )
+
+
+                # ====================================================
+                # DISPLAY IDENTIFIED ASSET
                 # ====================================================
 
                 st.success(
@@ -587,7 +591,7 @@ assessment to change.
 
 
                 # ====================================================
-                # MARKET DATA DISPLAY
+                # MARKET DATA
                 # ====================================================
 
                 with st.expander(
@@ -601,7 +605,7 @@ assessment to change.
 
 
                 # ====================================================
-                # FINANCIAL NEWS DISPLAY
+                # FINANCIAL NEWS
                 # ====================================================
 
                 with st.expander(
@@ -666,7 +670,7 @@ assessment to change.
 
 
                 # ====================================================
-                # MARKET SENTIMENT DISPLAY
+                # MARKET SENTIMENT
                 # ====================================================
 
                 with st.expander(
@@ -680,7 +684,7 @@ assessment to change.
 
 
                 # ====================================================
-                # MACROECONOMIC DISPLAY
+                # MACROECONOMIC CONTEXT
                 # ====================================================
 
                 with st.expander(
@@ -694,7 +698,7 @@ assessment to change.
 
 
                 # ====================================================
-                # AI REPORT
+                # AI MARKET INTELLIGENCE REPORT
                 # ====================================================
 
                 st.divider()
@@ -705,6 +709,21 @@ assessment to change.
 
                 st.write(
                     response.text
+                )
+
+
+                # ====================================================
+                # ADVERSARIAL ANALYSIS
+                # ====================================================
+
+                st.divider()
+
+                st.subheader(
+                    "⚔️ Bull vs Bear Adversarial Analysis"
+                )
+
+                st.write(
+                    adversarial_response.text
                 )
 
 
@@ -750,9 +769,9 @@ assessment to change.
                     )
 
 
-                    # =================================================
+                    # ------------------------------------------------
                     # EVIDENCE DETAILS
-                    # =================================================
+                    # ------------------------------------------------
 
                     with st.expander(
                         "🔬 View Evidence Scores",
@@ -822,4 +841,4 @@ else:
 
     st.info(
         "Upload a chart screenshot above to begin."
-                )
+)
