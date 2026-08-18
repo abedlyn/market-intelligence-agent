@@ -38,6 +38,11 @@ from scenario_engine import (
     calculate_scenario_probabilities
 )
 
+from confidence_engine import (
+    calculate_confidence,
+    format_confidence_report
+)
+
 
 # ============================================================
 # PAGE CONFIGURATION
@@ -583,6 +588,11 @@ assessment to change.
                     )
 
 
+                adversarial_text = (
+                    adversarial_response.text
+                )
+
+
                 # ====================================================
                 # IDENTIFIED ASSET
                 # ====================================================
@@ -725,7 +735,7 @@ assessment to change.
                 )
 
                 st.write(
-                    adversarial_response.text
+                    adversarial_text
                 )
 
 
@@ -743,16 +753,35 @@ assessment to change.
                 if evidence_scores:
 
                     # =================================================
-                    # NEW SCENARIO ENGINE
+                    # SCENARIO PROBABILITY ENGINE
                     # =================================================
 
                     probabilities = (
                         calculate_scenario_probabilities(
                             evidence_scores,
-                            adversarial_response.text
+                            adversarial_text
                         )
                     )
 
+
+                    # =================================================
+                    # CONFIDENCE ENGINE
+                    # =================================================
+
+                    confidence = calculate_confidence(
+                        evidence_scores=evidence_scores,
+                        probabilities=probabilities,
+                        adversarial_text=adversarial_text,
+                        market_context=market_context,
+                        news_context=news_context,
+                        sentiment_context=sentiment_context,
+                        macro_context=macro_context
+                    )
+
+
+                    # =================================================
+                    # SCENARIO PROBABILITIES
+                    # =================================================
 
                     st.divider()
 
@@ -761,10 +790,6 @@ assessment to change.
                         "Scenario Probabilities"
                     )
 
-
-                    # =================================================
-                    # DISPLAY PROBABILITIES
-                    # =================================================
 
                     col1, col2, col3 = st.columns(3)
 
@@ -801,40 +826,6 @@ assessment to change.
 
 
                     # =================================================
-                    # PROBABILITY DETAILS
-                    # =================================================
-
-                    with st.expander(
-                        "🔬 View Evidence Scores",
-                        expanded=False
-                    ):
-
-                        for key, value in (
-                            evidence_scores.items()
-                        ):
-
-                            st.write(
-                                f"**{key}:** {value}/10"
-                            )
-
-
-                    # =================================================
-                    # SCENARIO INTERPRETATION
-                    # =================================================
-
-                    highest_scenario = max(
-                        probabilities,
-                        key=probabilities.get
-                    )
-
-
-                    st.info(
-                        f"Current strongest evidence-weighted "
-                        f"scenario: **{highest_scenario}**"
-                    )
-
-
-                    # =================================================
                     # BALANCE WARNING
                     # =================================================
 
@@ -855,12 +846,109 @@ assessment to change.
                         )
 
 
+                    # =================================================
+                    # CONFIDENCE
+                    # =================================================
+
+                    st.divider()
+
+                    st.subheader(
+                        "🎯 Evidence Confidence"
+                    )
+
+
+                    confidence_col1, confidence_col2 = (
+                        st.columns(2)
+                    )
+
+
+                    with confidence_col1:
+
+                        st.metric(
+                            "Evidence Confidence",
+                            f"{confidence['score']}/100"
+                        )
+
+
+                    with confidence_col2:
+
+                        st.metric(
+                            "Confidence Level",
+                            confidence["label"]
+                        )
+
+
+                    st.progress(
+                        int(
+                            max(
+                                0,
+                                min(
+                                    100,
+                                    confidence["score"]
+                                )
+                            )
+                        )
+                    )
+
+
+                    st.write(
+                        format_confidence_report(
+                            confidence
+                        )
+                    )
+
+
+                    st.info(
+                        "⚠️ Evidence confidence is NOT the "
+                        "probability that the market will "
+                        "move in the predicted direction. "
+                        "It measures the quality, availability "
+                        "and consistency of the evidence."
+                    )
+
+
+                    # =================================================
+                    # EVIDENCE DETAILS
+                    # =================================================
+
+                    with st.expander(
+                        "🔬 View Evidence Scores",
+                        expanded=False
+                    ):
+
+                        for key, value in (
+                            evidence_scores.items()
+                        ):
+
+                            st.write(
+                                f"**{key}:** {value}/10"
+                            )
+
+
+                    # =================================================
+                    # STRONGEST SCENARIO
+                    # =================================================
+
+                    highest_scenario = max(
+                        probabilities,
+                        key=probabilities.get
+                    )
+
+
+                    st.info(
+                        f"Current strongest "
+                        f"evidence-weighted scenario: "
+                        f"**{highest_scenario}**"
+                    )
+
+
                 else:
 
                     st.warning(
                         "The AI did not return usable "
                         "evidence scores, so scenario "
-                        "probabilities could not be calculated."
+                        "probabilities and evidence "
+                        "confidence could not be calculated."
                     )
 
 
