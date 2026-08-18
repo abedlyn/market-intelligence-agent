@@ -31,9 +31,11 @@ from adversarial_engine import (
 )
 
 from evidence_engine import (
-    extract_evidence_scores,
-    build_evidence_summary,
-    format_probability_report
+    extract_evidence_scores
+)
+
+from scenario_engine import (
+    calculate_scenario_probabilities
 )
 
 
@@ -582,7 +584,7 @@ assessment to change.
 
 
                 # ====================================================
-                # DISPLAY IDENTIFIED ASSET
+                # IDENTIFIED ASSET
                 # ====================================================
 
                 st.success(
@@ -728,7 +730,7 @@ assessment to change.
 
 
                 # ====================================================
-                # EVIDENCE SCORING ENGINE
+                # EXTRACT EVIDENCE
                 # ====================================================
 
                 evidence_scores = (
@@ -740,9 +742,14 @@ assessment to change.
 
                 if evidence_scores:
 
-                    evidence_result = (
-                        build_evidence_summary(
-                            **evidence_scores
+                    # =================================================
+                    # NEW SCENARIO ENGINE
+                    # =================================================
+
+                    probabilities = (
+                        calculate_scenario_probabilities(
+                            evidence_scores,
+                            adversarial_response.text
                         )
                     )
 
@@ -755,70 +762,105 @@ assessment to change.
                     )
 
 
-                    probabilities = (
-                        evidence_result[
-                            "probabilities"
-                        ]
-                    )
+                    # =================================================
+                    # DISPLAY PROBABILITIES
+                    # =================================================
+
+                    col1, col2, col3 = st.columns(3)
+
+
+                    with col1:
+
+                        st.metric(
+                            "🐂 Bullish",
+                            f"{probabilities['Bullish']}%"
+                        )
+
+
+                    with col2:
+
+                        st.metric(
+                            "⚖️ Neutral",
+                            f"{probabilities['Neutral']}%"
+                        )
+
+
+                    with col3:
+
+                        st.metric(
+                            "🐻 Bearish",
+                            f"{probabilities['Bearish']}%"
+                        )
 
 
                     st.write(
-                        format_probability_report(
-                            probabilities
-                        )
+                        "These percentages represent "
+                        "evidence-weighted scenarios, "
+                        "not predictions or guarantees."
                     )
 
 
-                    # ------------------------------------------------
-                    # EVIDENCE DETAILS
-                    # ------------------------------------------------
+                    # =================================================
+                    # PROBABILITY DETAILS
+                    # =================================================
 
                     with st.expander(
                         "🔬 View Evidence Scores",
                         expanded=False
                     ):
 
-                        st.write(
-                            "Bullish evidence score:",
-                            evidence_result[
-                                "bullish_score"
-                            ]
-                        )
+                        for key, value in (
+                            evidence_scores.items()
+                        ):
 
-                        st.write(
-                            "Neutral / uncertainty score:",
-                            evidence_result[
-                                "neutral_score"
-                            ]
-                        )
-
-                        st.write(
-                            "Bearish evidence score:",
-                            evidence_result[
-                                "bearish_score"
-                            ]
-                        )
-
-                        st.json(
-                            evidence_scores
-                        )
+                            st.write(
+                                f"**{key}:** {value}/10"
+                            )
 
 
-                    st.caption(
-                        "These percentages are "
-                        "evidence-weighted scenario "
-                        "estimates. They are not predictions "
-                        "or guarantees."
+                    # =================================================
+                    # SCENARIO INTERPRETATION
+                    # =================================================
+
+                    highest_scenario = max(
+                        probabilities,
+                        key=probabilities.get
                     )
+
+
+                    st.info(
+                        f"Current strongest evidence-weighted "
+                        f"scenario: **{highest_scenario}**"
+                    )
+
+
+                    # =================================================
+                    # BALANCE WARNING
+                    # =================================================
+
+                    directional_gap = abs(
+                        probabilities["Bullish"]
+                        -
+                        probabilities["Bearish"]
+                    )
+
+
+                    if directional_gap <= 10:
+
+                        st.warning(
+                            "⚖️ Bullish and bearish evidence "
+                            "are closely balanced. Neutral "
+                            "has therefore been given "
+                            "meaningful weight."
+                        )
 
 
                 else:
 
                     st.warning(
                         "The AI did not return usable "
-                        "evidence scores, so "
-                        "evidence-weighted probabilities "
-                        "could not be calculated."
+                        "evidence scores, so scenario "
+                        "probabilities could not be calculated."
                     )
 
 
@@ -841,4 +883,4 @@ else:
 
     st.info(
         "Upload a chart screenshot above to begin."
-)
+                )
