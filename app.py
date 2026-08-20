@@ -51,6 +51,12 @@ from catalyst_engine import (
     build_catalyst_prompt
 )
 
+from opportunity_engine import (
+    build_opportunity,
+    get_actionable_opportunities,
+    format_opportunity
+)
+
 
 # ============================================================
 # PAGE CONFIGURATION
@@ -166,7 +172,6 @@ def generate_with_retry(
 
                 continue
 
-
             raise
 
 
@@ -209,6 +214,25 @@ def optional_gemini_analysis(
 
 
 # ============================================================
+# APPROVAL STATE
+# ============================================================
+
+if "approved_opportunities" not in st.session_state:
+
+    st.session_state.approved_opportunities = []
+
+
+if "declined_opportunities" not in st.session_state:
+
+    st.session_state.declined_opportunities = []
+
+
+if "pending_opportunities" not in st.session_state:
+
+    st.session_state.pending_opportunities = []
+
+
+# ============================================================
 # HEADER
 # ============================================================
 
@@ -222,6 +246,26 @@ st.write(
 )
 
 st.divider()
+
+
+# ============================================================
+# OPPORTUNITY STATUS
+# ============================================================
+
+if st.session_state.approved_opportunities:
+
+    st.success(
+        f"✅ Approved opportunities: "
+        f"{len(st.session_state.approved_opportunities)}"
+    )
+
+
+if st.session_state.declined_opportunities:
+
+    st.info(
+        f"❌ Declined opportunities: "
+        f"{len(st.session_state.declined_opportunities)}"
+    )
 
 
 # ============================================================
@@ -623,7 +667,7 @@ Do not invent macroeconomic conditions.
 
 
             # ====================================================
-            # MAIN ANALYSIS PROMPT
+            # MAIN ANALYSIS
             # ====================================================
 
             final_prompt = f"""
@@ -706,26 +750,6 @@ Explain evidence supporting the bearish case.
 
 
 ====================================================
-TIMEFRAME ALIGNMENT
-====================================================
-
-Explain whether timeframes agree or conflict.
-
-Conflicting timeframes should increase
-uncertainty.
-
-
-====================================================
-CATALYST IMPACT
-====================================================
-
-Explain which catalysts could materially
-change the three scenarios.
-
-Do not predict catalyst outcomes.
-
-
-====================================================
 EVIDENCE RULES
 ====================================================
 
@@ -796,10 +820,6 @@ that would materially change the assessment.
 """
 
 
-            # ====================================================
-            # MAIN AI ANALYSIS
-            # ====================================================
-
             with st.spinner(
                 "🤖 Completing market intelligence analysis..."
             ):
@@ -812,8 +832,7 @@ that would materially change the assessment.
                             image_part,
                             final_prompt
                         ],
-                        label="main market intelligence analysis",
-                        max_attempts=3
+                        label="main market intelligence analysis"
                     )
                 )
 
@@ -850,17 +869,13 @@ that would materially change the assessment.
 
 
             # ====================================================
-            # DISPLAY ASSET
+            # DISPLAY RESULTS
             # ====================================================
 
             st.success(
                 f"Asset identified: {asset_symbol}"
             )
 
-
-            # ====================================================
-            # MARKET DATA
-            # ====================================================
 
             with st.expander(
                 "📡 Market Data",
@@ -871,10 +886,6 @@ that would materially change the assessment.
                     market_context
                 )
 
-
-            # ====================================================
-            # NEWS
-            # ====================================================
 
             with st.expander(
                 "📰 Live Financial News",
@@ -937,10 +948,6 @@ that would materially change the assessment.
                     )
 
 
-            # ====================================================
-            # SENTIMENT
-            # ====================================================
-
             with st.expander(
                 "📣 Market Sentiment",
                 expanded=False
@@ -951,10 +958,6 @@ that would materially change the assessment.
                 )
 
 
-            # ====================================================
-            # MACRO
-            # ====================================================
-
             with st.expander(
                 "🌍 Macroeconomic Context",
                 expanded=False
@@ -964,10 +967,6 @@ that would materially change the assessment.
                     macro_context
                 )
 
-
-            # ====================================================
-            # TIMEFRAME
-            # ====================================================
 
             st.divider()
 
@@ -980,10 +979,6 @@ that would materially change the assessment.
             )
 
 
-            # ====================================================
-            # CATALYST
-            # ====================================================
-
             st.divider()
 
             st.subheader(
@@ -995,10 +990,6 @@ that would materially change the assessment.
             )
 
 
-            # ====================================================
-            # MAIN REPORT
-            # ====================================================
-
             st.divider()
 
             st.subheader(
@@ -1009,10 +1000,6 @@ that would materially change the assessment.
                 response.text
             )
 
-
-            # ====================================================
-            # ADVERSARIAL REPORT
-            # ====================================================
 
             st.divider()
 
@@ -1026,7 +1013,7 @@ that would materially change the assessment.
 
 
             # ====================================================
-            # EVIDENCE EXTRACTION
+            # EVIDENCE
             # ====================================================
 
             evidence_scores = (
@@ -1039,7 +1026,7 @@ that would materially change the assessment.
             if evidence_scores:
 
                 # =================================================
-                # ADVERSARIAL-INTEGRATED PROBABILITIES
+                # SCENARIO PROBABILITIES
                 # =================================================
 
                 probabilities = (
@@ -1066,7 +1053,7 @@ that would materially change the assessment.
 
 
                 # =================================================
-                # PROBABILITIES
+                # PROBABILITY DISPLAY
                 # =================================================
 
                 st.divider()
@@ -1106,43 +1093,154 @@ that would materially change the assessment.
                     )
 
 
-                st.write(
-                    "These percentages represent "
-                    "evidence-weighted scenarios, "
-                    "not predictions or guarantees."
+                st.caption(
+                    "These are evidence-weighted scenarios, "
+                    "not guaranteed future outcomes."
                 )
 
 
                 # =================================================
-                # BALANCE WARNING
+                # OPPORTUNITY ENGINE
                 # =================================================
 
-                directional_gap = abs(
-                    probabilities["Bullish"]
-                    -
-                    probabilities["Bearish"]
+                opportunity = build_opportunity(
+                    asset_symbol=asset_symbol,
+                    scenario_probabilities=probabilities,
+                    confidence_score=confidence["score"],
+                    reason=(
+                        "The setup is supported by the "
+                        "combined market intelligence, "
+                        "evidence scoring and adversarial "
+                        "Bull/Bear analysis."
+                    )
                 )
 
 
-                if directional_gap <= 10:
+                actionable = (
+                    get_actionable_opportunities(
+                        [opportunity],
+                        minimum_score=65
+                    )
+                )
 
-                    st.warning(
-                        "⚖️ Bullish and bearish evidence "
-                        "remain closely balanced. "
-                        "Neutral has therefore received "
-                        "meaningful weight."
+
+                # =================================================
+                # OPPORTUNITY CARD
+                # =================================================
+
+                st.divider()
+
+                st.subheader(
+                    "🎯 Market Opportunity"
+                )
+
+
+                if actionable:
+
+                    selected_opportunity = (
+                        actionable[0]
+                    )
+
+                    st.markdown(
+                        format_opportunity(
+                            selected_opportunity
+                        )
                     )
 
 
-                # =================================================
-                # ADVERSARIAL IMPACT EXPLANATION
-                # =================================================
+                    st.warning(
+                        "⚠️ This is an AI-generated "
+                        "market opportunity for your review. "
+                        "It is NOT an automatic trade."
+                    )
 
-                st.caption(
-                    "⚔️ Scenario probabilities incorporate "
-                    "both the structured evidence scores "
-                    "and the Bull/Bear adversarial challenge."
-                )
+
+                    # =================================================
+                    # APPROVAL CONTROLS
+                    # =================================================
+
+                    approve_col, decline_col = (
+                        st.columns(2)
+                    )
+
+
+                    with approve_col:
+
+                        approve = st.button(
+                            "✅ APPROVE",
+                            key=(
+                                f"approve_"
+                                f"{asset_symbol}"
+                            ),
+                            use_container_width=True
+                        )
+
+
+                    with decline_col:
+
+                        decline = st.button(
+                            "❌ DECLINE",
+                            key=(
+                                f"decline_"
+                                f"{asset_symbol}"
+                            ),
+                            use_container_width=True
+                        )
+
+
+                    if approve:
+
+                        selected_opportunity[
+                            "status"
+                        ] = "APPROVED"
+
+
+                        st.session_state\
+                            .approved_opportunities\
+                            .append(
+                                selected_opportunity
+                            )
+
+
+                        st.success(
+                            f"✅ {asset_symbol} opportunity "
+                            "approved."
+                        )
+
+
+                        st.info(
+                            "Approval is recorded only. "
+                            "No trade execution is connected "
+                            "to this button yet."
+                        )
+
+
+                    elif decline:
+
+                        selected_opportunity[
+                            "status"
+                        ] = "DECLINED"
+
+
+                        st.session_state\
+                            .declined_opportunities\
+                            .append(
+                                selected_opportunity
+                            )
+
+
+                        st.info(
+                            f"❌ {asset_symbol} opportunity "
+                            "declined."
+                        )
+
+
+                else:
+
+                    st.info(
+                        "No sufficiently strong actionable "
+                        "opportunity was identified."
+                    )
 
 
                 # =================================================
@@ -1197,17 +1295,8 @@ that would materially change the assessment.
                 )
 
 
-                st.info(
-                    "⚠️ Evidence confidence is NOT the "
-                    "probability that the market will move "
-                    "in the predicted direction. It measures "
-                    "the quality, availability and consistency "
-                    "of the evidence."
-                )
-
-
                 # =================================================
-                # EVIDENCE SCORES
+                # EVIDENCE DETAILS
                 # =================================================
 
                 with st.expander(
@@ -1224,30 +1313,13 @@ that would materially change the assessment.
                         )
 
 
-                # =================================================
-                # STRONGEST SCENARIO
-                # =================================================
-
-                highest_scenario = max(
-                    probabilities,
-                    key=probabilities.get
-                )
-
-
-                st.info(
-                    f"Current strongest "
-                    f"evidence-weighted scenario: "
-                    f"**{highest_scenario}**"
-                )
-
-
             else:
 
                 st.warning(
                     "The AI did not return usable "
                     "evidence scores, so scenario "
-                    "probabilities and evidence "
-                    "confidence could not be calculated."
+                    "probabilities and opportunity "
+                    "scoring could not be calculated."
                 )
 
 
