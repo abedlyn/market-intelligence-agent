@@ -8,7 +8,6 @@ from research_engine import (
 )
 
 from market_data import get_market_data
-
 from news_research import get_market_news
 
 from news_processor import (
@@ -45,6 +44,10 @@ from confidence_engine import (
 
 from timeframe_engine import (
     build_timeframe_prompt
+)
+
+from catalyst_engine import (
+    build_catalyst_prompt
 )
 
 
@@ -102,7 +105,7 @@ if uploaded_file is not None:
         try:
 
             # ====================================================
-            # CONNECT TO GEMINI
+            # GEMINI CONNECTION
             # ====================================================
 
             client = genai.Client(
@@ -112,11 +115,11 @@ if uploaded_file is not None:
 
             with st.spinner(
                 "🤖 AI is analyzing the chart and gathering "
-                "live market intelligence..."
+                "market intelligence..."
             ):
 
                 # ====================================================
-                # READ IMAGE
+                # IMAGE
                 # ====================================================
 
                 image_bytes = uploaded_file.getvalue()
@@ -128,7 +131,7 @@ if uploaded_file is not None:
 
 
                 # ====================================================
-                # IDENTIFY ASSET
+                # ASSET IDENTIFICATION
                 # ====================================================
 
                 identification_prompt = """
@@ -148,7 +151,6 @@ TSLA
 NVDA
 
 Do not provide an explanation.
-Do not provide anything else.
 
 If you cannot identify it, return UNKNOWN.
 """
@@ -174,7 +176,7 @@ If you cannot identify it, return UNKNOWN.
 
 
                 # ====================================================
-                # NORMALIZE CRYPTO SYMBOL
+                # CRYPTO NORMALIZATION
                 # ====================================================
 
                 crypto_id = normalize_crypto_id(
@@ -183,7 +185,7 @@ If you cannot identify it, return UNKNOWN.
 
 
                 # ====================================================
-                # LIVE MARKET DATA
+                # MARKET DATA
                 # ====================================================
 
                 if crypto_id:
@@ -243,7 +245,7 @@ chart and clearly identify this limitation.
 
 
                 # ====================================================
-                # LIVE FINANCIAL NEWS
+                # FINANCIAL NEWS
                 # ====================================================
 
                 processed_news = []
@@ -288,11 +290,13 @@ IMPORTANT:
 
 Treat reported facts as external evidence.
 
-Do not assume that every headline is accurate
-or that every article represents market consensus.
+Do not assume that every headline is accurate.
 
-Distinguish reported facts from analyst opinions
-and from your own inference.
+Distinguish:
+
+FACT
+ANALYST OPINION
+INFERENCE
 
 Do not fabricate news.
 """
@@ -314,7 +318,7 @@ Clearly state that live news was unavailable.
 
 
                 # ====================================================
-                # MARKET SENTIMENT
+                # SENTIMENT
                 # ====================================================
 
                 try:
@@ -346,7 +350,7 @@ Do not invent market sentiment.
 
 
                 # ====================================================
-                # MACROECONOMIC CONTEXT
+                # MACRO
                 # ====================================================
 
                 try:
@@ -372,7 +376,7 @@ Do not invent macroeconomic conditions.
 
 
                 # ====================================================
-                # GENERAL RESEARCH PROMPT
+                # RESEARCH PROMPT
                 # ====================================================
 
                 research_prompt = build_research_prompt(
@@ -410,7 +414,35 @@ Do not invent macroeconomic conditions.
 
 
                 # ====================================================
-                # GENERAL AI RESEARCH
+                # CATALYST / EVENT ANALYSIS
+                # ====================================================
+
+                with st.spinner(
+                    "⚡ Analyzing catalysts and event risks..."
+                ):
+
+                    catalyst_prompt = (
+                        build_catalyst_prompt(
+                            asset_symbol
+                        )
+                    )
+
+                    catalyst_response = (
+                        client.models.generate_content(
+                            model="gemini-3.6-flash",
+                            contents=[
+                                catalyst_prompt
+                            ]
+                        )
+                    )
+
+                    catalyst_text = (
+                        catalyst_response.text
+                    )
+
+
+                # ====================================================
+                # MAIN MARKET ANALYSIS PROMPT
                 # ====================================================
 
                 final_prompt = f"""
@@ -428,9 +460,13 @@ MULTI-TIMEFRAME ANALYSIS
 
 {timeframe_text}
 
+CATALYST AND EVENT-RISK ANALYSIS
+
+{catalyst_text}
+
 
 ====================================================
-ASSET BEING ANALYZED
+ASSET
 ====================================================
 
 {asset_symbol}
@@ -440,14 +476,15 @@ ASSET BEING ANALYZED
 1. OBSERVED EVIDENCE
 ====================================================
 
-Identify things directly visible in:
+Identify evidence from:
 
-- the chart
-- supplied market data
-- retrieved financial news
-- market sentiment
-- macroeconomic data
-- multi-timeframe analysis
+- chart
+- market data
+- financial news
+- sentiment
+- macroeconomic conditions
+- timeframe analysis
+- catalyst/event analysis
 
 
 ====================================================
@@ -455,64 +492,59 @@ Identify things directly visible in:
 ====================================================
 
 Explain reasonable conclusions derived
-from the available evidence.
+from the evidence.
 
 
 ====================================================
 3. UNCERTAINTIES
 ====================================================
 
-Identify information that cannot be established
-reliably.
+Identify what cannot be established reliably.
 
-Do not fill gaps with assumptions presented
-as facts.
+Do not convert assumptions into facts.
 
 
 ====================================================
 4. BULLISH SCENARIO
 ====================================================
 
-Explain the conditions that could support
-a bullish scenario.
+Explain evidence supporting a bullish scenario.
 
 
 ====================================================
-5. NEUTRAL / RANGE SCENARIO
+5. NEUTRAL SCENARIO
 ====================================================
 
-Explain the conditions that could support
-a neutral or range-bound scenario.
+Explain evidence supporting a neutral,
+range-bound or uncertain scenario.
 
 
 ====================================================
 6. BEARISH SCENARIO
 ====================================================
 
-Explain the conditions that could support
-a bearish scenario.
+Explain evidence supporting a bearish scenario.
 
 
 ====================================================
-7. SCENARIO ASSESSMENT
-====================================================
-
-Explain which scenario currently has the
-strongest evidence and why.
-
-Do not treat this as a guaranteed prediction.
-
-
-====================================================
-8. TIMEFRAME ALIGNMENT
+7. TIMEFRAME ALIGNMENT
 ====================================================
 
 Explain whether the available timeframes
-support the same directional conclusion.
+agree or conflict.
 
-If timeframes conflict, explicitly state this.
+Conflicting timeframes should increase
+uncertainty.
 
-Timeframe conflict should increase uncertainty.
+
+====================================================
+8. CATALYST IMPACT
+====================================================
+
+Explain which identified catalysts could
+materially change the three scenarios.
+
+Do NOT predict catalyst outcomes.
 
 
 ====================================================
@@ -521,19 +553,18 @@ EVIDENCE RULES
 
 Do NOT fabricate:
 
-- news
 - prices
+- news
 - events
-- institutional activity
+- dates
+- earnings
 - economic data
-- sentiment
-- analyst opinions
-- macroeconomic conditions
-- chart timeframes
+- regulatory decisions
 - technical patterns
+- institutional activity
+- analyst opinions
 
-If information is unavailable,
-explicitly say so.
+If unavailable, say so.
 
 Clearly distinguish:
 
@@ -547,8 +578,7 @@ UNCERTAINTY
 EVIDENCE SCORING
 ====================================================
 
-After completing your analysis, assign
-evidence strength scores from 0 to 10.
+Score bullish and bearish evidence from 0 to 10.
 
 0 = no evidence
 1-2 = very weak
@@ -558,9 +588,7 @@ evidence strength scores from 0 to 10.
 9-10 = very strong
 
 
-Score BOTH bullish and bearish evidence.
-
-Use this exact JSON format:
+Return this exact JSON at the END:
 
 {{
   "technical_bullish": 0,
@@ -580,28 +608,20 @@ Use this exact JSON format:
 }}
 
 
-Return the JSON at the very end
-of your response.
-
-Do not invent evidence simply
-to give a score.
-
-If evidence is unavailable,
-use 0.
+Use 0 when reliable evidence is unavailable.
 
 
 ====================================================
 WHAT WOULD CHANGE THIS ANALYSIS
 ====================================================
 
-List the specific new evidence or
-price behavior that would cause the
-assessment to change.
+List specific evidence, events or price behavior
+that would materially change the assessment.
 """
 
 
                 # ====================================================
-                # GENERAL AI ANALYSIS
+                # MAIN AI ANALYSIS
                 # ====================================================
 
                 with st.spinner(
@@ -620,7 +640,7 @@ assessment to change.
 
 
                 # ====================================================
-                # ADVERSARIAL BULL VS BEAR ANALYSIS
+                # ADVERSARIAL ANALYSIS
                 # ====================================================
 
                 adversarial_prompt = (
@@ -653,7 +673,7 @@ assessment to change.
 
 
             # ========================================================
-            # DISPLAY RESULTS
+            # DISPLAY ASSET
             # ========================================================
 
             st.success(
@@ -676,7 +696,7 @@ assessment to change.
 
 
             # ========================================================
-            # FINANCIAL NEWS
+            # NEWS
             # ========================================================
 
             with st.expander(
@@ -741,7 +761,7 @@ assessment to change.
 
 
             # ========================================================
-            # MARKET SENTIMENT
+            # SENTIMENT
             # ========================================================
 
             with st.expander(
@@ -755,7 +775,7 @@ assessment to change.
 
 
             # ========================================================
-            # MACROECONOMIC CONTEXT
+            # MACRO
             # ========================================================
 
             with st.expander(
@@ -769,7 +789,7 @@ assessment to change.
 
 
             # ========================================================
-            # MULTI-TIMEFRAME ANALYSIS
+            # TIMEFRAME ANALYSIS
             # ========================================================
 
             st.divider()
@@ -784,7 +804,22 @@ assessment to change.
 
 
             # ========================================================
-            # MARKET INTELLIGENCE REPORT
+            # CATALYST ANALYSIS
+            # ========================================================
+
+            st.divider()
+
+            st.subheader(
+                "⚡ Catalyst & Event Risk"
+            )
+
+            st.write(
+                catalyst_text
+            )
+
+
+            # ========================================================
+            # MAIN REPORT
             # ========================================================
 
             st.divider()
@@ -799,7 +834,7 @@ assessment to change.
 
 
             # ========================================================
-            # ADVERSARIAL ANALYSIS
+            # ADVERSARIAL REPORT
             # ========================================================
 
             st.divider()
@@ -814,7 +849,7 @@ assessment to change.
 
 
             # ========================================================
-            # EXTRACT EVIDENCE
+            # EVIDENCE EXTRACTION
             # ========================================================
 
             evidence_scores = (
@@ -827,7 +862,7 @@ assessment to change.
             if evidence_scores:
 
                 # ====================================================
-                # SCENARIO PROBABILITIES
+                # SCENARIO ENGINE
                 # ====================================================
 
                 probabilities = (
@@ -854,7 +889,7 @@ assessment to change.
 
 
                 # ====================================================
-                # SCENARIO PROBABILITIES DISPLAY
+                # SCENARIO PROBABILITIES
                 # ====================================================
 
                 st.divider()
@@ -1038,11 +1073,11 @@ assessment to change.
 
 
 # ============================================================
-# NO CHART UPLOADED
+# NO CHART
 # ============================================================
 
 else:
 
     st.info(
         "Upload a chart screenshot above to begin."
-                )
+)
