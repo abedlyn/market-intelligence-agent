@@ -1,5 +1,106 @@
-def clamp(value, minimum, maximum):
-    return max(minimum, min(value, maximum))
+import re
+
+
+def clamp(value, minimum=0, maximum=100):
+    return max(minimum, min(maximum, value))
+
+
+def extract_adversarial_scores(adversarial_text):
+    """
+    Extract optional numeric Bull/Bear strength scores
+    from the adversarial analysis.
+
+    If scores are unavailable, return neutral defaults.
+    """
+
+    text = adversarial_text.lower()
+
+    bullish_score = None
+    bearish_score = None
+
+    bullish_patterns = [
+        r"bull(?:ish)?[^0-9]{0,30}(\d{1,3})\s*(?:/10|%)?",
+        r"bull case[^0-9]{0,30}(\d{1,3})",
+        r"bull strength[^0-9]{0,30}(\d{1,3})"
+    ]
+
+    bearish_patterns = [
+        r"bear(?:ish)?[^0-9]{0,30}(\d{1,3})\s*(?:/10|%)?",
+        r"bear case[^0-9]{0,30}(\d{1,3})",
+        r"bear strength[^0-9]{0,30}(\d{1,3})"
+    ]
+
+    for pattern in bullish_patterns:
+
+        match = re.search(pattern, text)
+
+        if match:
+            bullish_score = float(match.group(1))
+            break
+
+    for pattern in bearish_patterns:
+
+        match = re.search(pattern, text)
+
+        if match:
+            bearish_score = float(match.group(1))
+            break
+
+    if bullish_score is None:
+        bullish_score = 5.0
+
+    if bearish_score is None:
+        bearish_score = 5.0
+
+    # Convert percentages above 10 into a 0-10 scale
+    if bullish_score > 10:
+        bullish_score = bullish_score / 10
+
+    if bearish_score > 10:
+        bearish_score = bearish_score / 10
+
+    return {
+        "bullish": clamp(bullish_score, 0, 10),
+        "bearish": clamp(bearish_score, 0, 10)
+    }
+
+
+def calculate_base_directional_scores(evidence_scores):
+    """
+    Calculate bullish and bearish evidence strength
+    from the structured evidence engine.
+    """
+
+    bullish_keys = [
+        "technical_bullish",
+        "momentum_bullish",
+        "sentiment_bullish",
+        "fundamental_bullish",
+        "macro_bullish"
+    ]
+
+    bearish_keys = [
+        "technical_bearish",
+        "momentum_bearish",
+        "sentiment_bearish",
+        "fundamental_bearish",
+        "macro_bearish"
+    ]
+
+    bullish_values = [
+        float(evidence_scores.get(key, 0))
+        for key in bullish_keys
+    ]
+
+    bearish_values = [
+        float(evidence_scores.get(key, 0))
+        for key in bearish_keys
+    ]
+
+    bullish_total = sum(bullish_values)
+    bearish_total = sum(bearish_values)
+
+    return bullish_total, bearish_total
 
 
 def calculate_scenario_probabilities(
@@ -7,341 +108,234 @@ def calculate_scenario_probabilities(
     adversarial_text=""
 ):
     """
-    Calculate Bullish / Neutral / Bearish probabilities
-    using evidence strength and adversarial analysis.
+    Evidence-weighted Bullish / Neutral / Bearish engine.
 
-    Neutral receives additional weight when bullish
-    and bearish evidence are closely balanced.
+    The adversarial engine acts as a second layer of scrutiny.
+
+    Neutral receives additional weight when bullish and
+    bearish evidence are closely balanced.
     """
 
-    if not evidence_scores:
-        return {
-            "Bullish": 33.3,
-            "Neutral": 33.4,
-            "Bearish": 33.3
-        }
+    bullish_total, bearish_total = (
+        calculate_base_directional_scores(
+            evidence_scores
+        )
+    )
+
+    adversarial = extract_adversarial_scores(
+        adversarial_text
+    )
+
+    adversarial_bullish = adversarial["bullish"]
+    adversarial_bearish = adversarial["bearish"]
 
 
     # ============================================================
-    # EVIDENCE COMPONENTS
-    # ============================================================
-
-    technical_bullish = float(
-        evidence_scores.get(
-            "technical_bullish",
-            0
-        )
-    )
-
-    technical_bearish = float(
-        evidence_scores.get(
-            "technical_bearish",
-            0
-        )
-    )
-
-
-    momentum_bullish = float(
-        evidence_scores.get(
-            "momentum_bullish",
-            0
-        )
-    )
-
-    momentum_bearish = float(
-        evidence_scores.get(
-            "momentum_bearish",
-            0
-        )
-    )
-
-
-    sentiment_bullish = float(
-        evidence_scores.get(
-            "sentiment_bullish",
-            0
-        )
-    )
-
-    sentiment_bearish = float(
-        evidence_scores.get(
-            "sentiment_bearish",
-            0
-        )
-    )
-
-
-    fundamental_bullish = float(
-        evidence_scores.get(
-            "fundamental_bullish",
-            0
-        )
-    )
-
-    fundamental_bearish = float(
-        evidence_scores.get(
-            "fundamental_bearish",
-            0
-        )
-    )
-
-
-    macro_bullish = float(
-        evidence_scores.get(
-            "macro_bullish",
-            0
-        )
-    )
-
-    macro_bearish = float(
-        evidence_scores.get(
-            "macro_bearish",
-            0
-        )
-    )
-
-
-    # ============================================================
-    # WEIGHT DIFFERENT EVIDENCE TYPES
-    # ============================================================
-
-    bullish_score = (
-        technical_bullish * 1.40
-        + momentum_bullish * 1.20
-        + sentiment_bullish * 0.80
-        + fundamental_bullish * 1.00
-        + macro_bullish * 0.80
-    )
-
-
-    bearish_score = (
-        technical_bearish * 1.40
-        + momentum_bearish * 1.20
-        + sentiment_bearish * 0.80
-        + fundamental_bearish * 1.00
-        + macro_bearish * 0.80
-    )
-
-
-    # ============================================================
-    # BULL / BEAR BALANCE
+    # BASE DIRECTIONAL BALANCE
     # ============================================================
 
     total_directional = (
-        bullish_score +
-        bearish_score
+        bullish_total +
+        bearish_total
     )
-
 
     if total_directional <= 0:
 
-        return {
-            "Bullish": 33.3,
-            "Neutral": 33.4,
-            "Bearish": 33.3
-        }
-
-
-    difference = abs(
-        bullish_score -
-        bearish_score
-    )
-
-
-    balance_ratio = (
-        difference /
-        total_directional
-    )
-
-
-    # ============================================================
-    # BASE DIRECTIONAL PROBABILITIES
-    # ============================================================
-
-    bullish_share = (
-        bullish_score /
-        total_directional
-    )
-
-    bearish_share = (
-        bearish_score /
-        total_directional
-    )
-
-
-    # ============================================================
-    # NEUTRAL WEIGHT
-    # ============================================================
-
-    # Closely balanced evidence gets a much larger
-    # neutral allocation.
-
-    if balance_ratio <= 0.05:
-
-        neutral_weight = 0.50
-
-    elif balance_ratio <= 0.10:
-
-        neutral_weight = 0.40
-
-    elif balance_ratio <= 0.20:
-
-        neutral_weight = 0.30
-
-    elif balance_ratio <= 0.30:
-
-        neutral_weight = 0.20
-
-    elif balance_ratio <= 0.40:
-
-        neutral_weight = 0.12
+        base_bullish = 50.0
+        base_bearish = 50.0
 
     else:
 
-        neutral_weight = 0.07
+        base_bullish = (
+            bullish_total /
+            total_directional
+        ) * 100
 
-
-    # ============================================================
-    # DIRECTIONAL ALLOCATION
-    # ============================================================
-
-    remaining = (
-        1.0 -
-        neutral_weight
-    )
-
-
-    bullish_probability = (
-        bullish_share *
-        remaining
-    )
-
-
-    bearish_probability = (
-        bearish_share *
-        remaining
-    )
+        base_bearish = (
+            bearish_total /
+            total_directional
+        ) * 100
 
 
     # ============================================================
     # ADVERSARIAL ADJUSTMENT
     # ============================================================
 
-    # The adversarial engine is deliberately used
-    # as a modest adjustment rather than allowing
-    # text alone to dominate the probabilities.
+    adversarial_total = (
+        adversarial_bullish +
+        adversarial_bearish
+    )
 
-    if adversarial_text:
+    if adversarial_total > 0:
 
-        text = adversarial_text.lower()
-
-
-        bullish_weakness_terms = [
-            "bull case weaknesses",
-            "bull case weakness",
-            "bullish case is weak",
-            "bullish case depends",
-            "bullish thesis is weak"
-        ]
-
-
-        bearish_weakness_terms = [
-            "bear case weaknesses",
-            "bear case weakness",
-            "bearish case is weak",
-            "bearish case depends",
-            "bearish thesis is weak"
-        ]
-
-
-        bullish_weakness = sum(
-            term in text
-            for term in bullish_weakness_terms
+        adversarial_bull_pct = (
+            adversarial_bullish /
+            adversarial_total
         )
 
-
-        bearish_weakness = sum(
-            term in text
-            for term in bearish_weakness_terms
+        adversarial_bear_pct = (
+            adversarial_bearish /
+            adversarial_total
         )
 
+    else:
 
-        if bullish_weakness > bearish_weakness:
-
-            adjustment = min(
-                0.05,
-                bullish_weakness * 0.02
-            )
-
-            bullish_probability -= adjustment
-            bearish_probability += adjustment
+        adversarial_bull_pct = 0.5
+        adversarial_bear_pct = 0.5
 
 
-        elif bearish_weakness > bullish_weakness:
+    # Blend original evidence with adversarial evidence.
+    #
+    # 70% = structured evidence
+    # 30% = adversarial challenge
 
-            adjustment = min(
-                0.05,
-                bearish_weakness * 0.02
-            )
+    blended_bullish = (
+        (base_bullish / 100) * 0.70
+        +
+        adversarial_bull_pct * 0.30
+    )
 
-            bearish_probability -= adjustment
-            bullish_probability += adjustment
+    blended_bearish = (
+        (base_bearish / 100) * 0.70
+        +
+        adversarial_bear_pct * 0.30
+    )
 
 
     # ============================================================
-    # NORMALIZE
+    # DIRECTIONAL BALANCE
     # ============================================================
 
-    bullish_probability = clamp(
-        bullish_probability,
-        0.0,
-        1.0
-    )
-
-    bearish_probability = clamp(
-        bearish_probability,
-        0.0,
-        1.0
+    directional_gap = abs(
+        blended_bullish -
+        blended_bearish
     )
 
 
-    neutral_probability = max(
-        0.0,
-        1.0
-        - bullish_probability
-        - bearish_probability
+    # ============================================================
+    # NEUTRAL ENGINE
+    # ============================================================
+
+    # The closer Bull and Bear are,
+    # the more Neutral receives weight.
+
+    if directional_gap <= 0.05:
+
+        neutral_weight = 0.50
+
+    elif directional_gap <= 0.10:
+
+        neutral_weight = 0.40
+
+    elif directional_gap <= 0.15:
+
+        neutral_weight = 0.30
+
+    elif directional_gap <= 0.25:
+
+        neutral_weight = 0.20
+
+    else:
+
+        neutral_weight = 0.10
+
+
+    # ============================================================
+    # APPLY NEUTRAL WEIGHT
+    # ============================================================
+
+    directional_weight = (
+        1.0 -
+        neutral_weight
     )
 
+    bullish_probability = (
+        blended_bullish /
+        (
+            blended_bullish +
+            blended_bearish
+        )
+    ) * directional_weight
+
+    bearish_probability = (
+        blended_bearish /
+        (
+            blended_bullish +
+            blended_bearish
+        )
+    ) * directional_weight
+
+    neutral_probability = neutral_weight
+
+
+    # ============================================================
+    # CONVERT TO PERCENTAGES
+    # ============================================================
+
+    bullish_probability *= 100
+    bearish_probability *= 100
+    neutral_probability *= 100
+
+
+    # ============================================================
+    # ROUNDING
+    # ============================================================
+
+    bullish_probability = round(
+        bullish_probability
+    )
+
+    bearish_probability = round(
+        bearish_probability
+    )
+
+    neutral_probability = round(
+        neutral_probability
+    )
+
+
+    # ============================================================
+    # FORCE TOTAL = 100
+    # ============================================================
 
     total = (
         bullish_probability +
-        neutral_probability +
+        bearish_probability +
+        neutral_probability
+    )
+
+    difference = 100 - total
+
+    if difference != 0:
+
+        if bullish_probability >= bearish_probability:
+
+            bullish_probability += difference
+
+        else:
+
+            bearish_probability += difference
+
+
+    # ============================================================
+    # FINAL SAFETY CLAMP
+    # ============================================================
+
+    bullish_probability = clamp(
+        bullish_probability
+    )
+
+    neutral_probability = clamp(
+        neutral_probability
+    )
+
+    bearish_probability = clamp(
         bearish_probability
     )
 
 
-    bullish_probability /= total
-    neutral_probability /= total
-    bearish_probability /= total
-
-
-    # ============================================================
-    # RETURN PERCENTAGES
-    # ============================================================
-
     return {
-        "Bullish": round(
-            bullish_probability * 100,
-            1
-        ),
-
-        "Neutral": round(
-            neutral_probability * 100,
-            1
-        ),
-
-        "Bearish": round(
-            bearish_probability * 100,
-            1
-        )
-      }
+        "Bullish": bullish_probability,
+        "Neutral": neutral_probability,
+        "Bearish": bearish_probability
+    }
