@@ -64,18 +64,10 @@ st.set_page_config(
 
 
 # ============================================================
-# GEMINI RESILIENCE LAYER
+# GEMINI ERROR HANDLING
 # ============================================================
 
 def is_temporary_gemini_error(error):
-    """
-    Detect temporary Gemini availability errors.
-
-    Returns True for errors such as:
-    - 503 UNAVAILABLE
-    - temporary high demand
-    - service unavailable
-    """
 
     error_text = str(error).upper()
 
@@ -95,13 +87,6 @@ def is_temporary_gemini_error(error):
 
 
 def is_quota_error(error):
-    """
-    Detect Gemini quota/rate-limit errors.
-
-    429 quota exhaustion should generally not
-    be repeatedly retried because the account may
-    have exhausted its allowed quota.
-    """
 
     error_text = str(error).upper()
 
@@ -125,19 +110,13 @@ def generate_with_retry(
     label="Gemini analysis",
     max_attempts=3
 ):
-    """
-    Call Gemini with automatic retry handling.
-
-    Temporary 503 errors receive exponential backoff.
-
-    429 quota errors are not repeatedly retried.
-
-    Other errors are raised immediately.
-    """
 
     last_error = None
 
-    for attempt in range(1, max_attempts + 1):
+    for attempt in range(
+        1,
+        max_attempts + 1
+    ):
 
         try:
 
@@ -152,23 +131,14 @@ def generate_with_retry(
 
             last_error = error
 
-            # ----------------------------------------------------
-            # QUOTA ERROR
-            # ----------------------------------------------------
-
             if is_quota_error(error):
 
                 raise RuntimeError(
                     "Gemini quota/rate limit reached. "
-                    "The request was not repeatedly retried. "
-                    "Please wait for the quota to reset or "
-                    "check your Gemini API plan."
+                    "Please wait for the quota to reset "
+                    "or check your Gemini API plan."
                 ) from error
 
-
-            # ----------------------------------------------------
-            # TEMPORARY 503 ERROR
-            # ----------------------------------------------------
 
             if is_temporary_gemini_error(error):
 
@@ -178,11 +148,12 @@ def generate_with_retry(
                         f"{label} is temporarily unavailable "
                         f"after {max_attempts} attempts. "
                         "Gemini may currently be experiencing "
-                        "high demand. Please try again later."
+                        "high demand."
                     ) from error
 
-
-                delay = 4 * (2 ** (attempt - 1))
+                delay = 4 * (
+                    2 ** (attempt - 1)
+                )
 
                 st.warning(
                     f"⚠️ Gemini is temporarily busy while "
@@ -196,10 +167,6 @@ def generate_with_retry(
                 continue
 
 
-            # ----------------------------------------------------
-            # OTHER ERROR
-            # ----------------------------------------------------
-
             raise
 
 
@@ -209,7 +176,7 @@ def generate_with_retry(
 
 
 # ============================================================
-# SAFE OPTIONAL GEMINI CALL
+# OPTIONAL GEMINI ANALYSIS
 # ============================================================
 
 def optional_gemini_analysis(
@@ -218,14 +185,6 @@ def optional_gemini_analysis(
     contents,
     label
 ):
-    """
-    Perform a Gemini request that is useful but not
-    essential to the entire analysis.
-
-    If it fails after retries, return a readable
-    unavailable message instead of killing the
-    whole analysis.
-    """
 
     try:
 
@@ -250,32 +209,40 @@ def optional_gemini_analysis(
 
 
 # ============================================================
-# APP HEADER
+# HEADER
 # ============================================================
 
-st.title("📊 Market Intelligence Agent")
+st.title(
+    "📊 Market Intelligence Agent"
+)
 
 st.write(
-    "Upload a stock or cryptocurrency chart for "
-    "AI-powered market analysis."
+    "Upload a stock or cryptocurrency chart "
+    "for AI-powered market analysis."
 )
 
 st.divider()
 
 
 # ============================================================
-# CHART UPLOAD
+# FILE UPLOAD
 # ============================================================
 
 uploaded_file = st.file_uploader(
     "📷 Upload your chart screenshot",
-    type=["png", "jpg", "jpeg"]
+    type=[
+        "png",
+        "jpg",
+        "jpeg"
+    ]
 )
 
 
 if uploaded_file is not None:
 
-    st.subheader("Chart Preview")
+    st.subheader(
+        "Chart Preview"
+    )
 
     st.image(
         uploaded_file,
@@ -283,6 +250,7 @@ if uploaded_file is not None:
     )
 
     st.divider()
+
 
     if st.button(
         "🔎 Analyze Market",
@@ -292,25 +260,33 @@ if uploaded_file is not None:
         try:
 
             # ====================================================
-            # GEMINI CONNECTION
+            # GEMINI CLIENT
             # ====================================================
 
             client = genai.Client(
-                api_key=st.secrets["GEMINI_API_KEY"]
+                api_key=st.secrets[
+                    "GEMINI_API_KEY"
+                ]
             )
 
-            model_name = "gemini-3.6-flash"
+            model_name = (
+                "gemini-3.6-flash"
+            )
 
 
             # ====================================================
-            # IMAGE PREPARATION
+            # IMAGE
             # ====================================================
 
-            image_bytes = uploaded_file.getvalue()
+            image_bytes = (
+                uploaded_file.getvalue()
+            )
 
-            image_part = types.Part.from_bytes(
-                data=image_bytes,
-                mime_type=uploaded_file.type
+            image_part = (
+                types.Part.from_bytes(
+                    data=image_bytes,
+                    mime_type=uploaded_file.type
+                )
             )
 
 
@@ -340,7 +316,8 @@ NVDA
 
 Do not provide an explanation.
 
-If you cannot identify it, return UNKNOWN.
+If you cannot identify it,
+return UNKNOWN.
 """
 
                 identification_response = (
@@ -351,8 +328,7 @@ If you cannot identify it, return UNKNOWN.
                             image_part,
                             identification_prompt
                         ],
-                        label="asset identification",
-                        max_attempts=3
+                        label="asset identification"
                     )
                 )
 
@@ -370,8 +346,10 @@ If you cannot identify it, return UNKNOWN.
             # CRYPTO NORMALIZATION
             # ====================================================
 
-            crypto_id = normalize_crypto_id(
-                asset_symbol
+            crypto_id = (
+                normalize_crypto_id(
+                    asset_symbol
+                )
             )
 
 
@@ -383,8 +361,10 @@ If you cannot identify it, return UNKNOWN.
 
                 try:
 
-                    market_data = get_market_data(
-                        crypto_id
+                    market_data = (
+                        get_market_data(
+                            crypto_id
+                        )
                     )
 
                     market_context = f"""
@@ -436,16 +416,18 @@ chart and clearly identify this limitation.
 
 
             # ====================================================
-            # FINANCIAL NEWS
+            # NEWS
             # ====================================================
 
             processed_news = []
 
             try:
 
-                alpha_vantage_key = st.secrets[
-                    "ALPHA_VANTAGE_API_KEY"
-                ]
+                alpha_vantage_key = (
+                    st.secrets[
+                        "ALPHA_VANTAGE_API_KEY"
+                    ]
+                )
 
                 news_symbol = asset_symbol
 
@@ -455,18 +437,24 @@ chart and clearly identify this limitation.
                         f"CRYPTO:{asset_symbol}"
                     )
 
-                news_data = get_market_news(
-                    news_symbol,
-                    alpha_vantage_key,
-                    limit=10
+                news_data = (
+                    get_market_news(
+                        news_symbol,
+                        alpha_vantage_key,
+                        limit=10
+                    )
                 )
 
-                processed_news = process_news_data(
-                    news_data
+                processed_news = (
+                    process_news_data(
+                        news_data
+                    )
                 )
 
-                formatted_news = format_news_for_ai(
-                    processed_news
+                formatted_news = (
+                    format_news_for_ai(
+                        processed_news
+                    )
                 )
 
                 news_context = f"""
@@ -481,7 +469,7 @@ IMPORTANT:
 
 Treat reported facts as external evidence.
 
-Do not assume that every headline is accurate.
+Do not assume every headline is accurate.
 
 Distinguish:
 
@@ -546,10 +534,14 @@ Do not invent market sentiment.
 
             try:
 
-                macro_data = get_macro_data()
+                macro_data = (
+                    get_macro_data()
+                )
 
-                macro_context = format_macro_for_ai(
-                    macro_data
+                macro_context = (
+                    format_macro_for_ai(
+                        macro_data
+                    )
                 )
 
             except Exception as macro_error:
@@ -567,16 +559,18 @@ Do not invent macroeconomic conditions.
 
 
             # ====================================================
-            # GENERAL RESEARCH PROMPT
+            # RESEARCH PROMPT
             # ====================================================
 
-            research_prompt = build_research_prompt(
-                asset_symbol
+            research_prompt = (
+                build_research_prompt(
+                    asset_symbol
+                )
             )
 
 
             # ====================================================
-            # MULTI-TIMEFRAME ANALYSIS
+            # MULTI-TIMEFRAME
             # ====================================================
 
             with st.spinner(
@@ -589,19 +583,21 @@ Do not invent macroeconomic conditions.
                     )
                 )
 
-                timeframe_text = optional_gemini_analysis(
-                    client=client,
-                    model=model_name,
-                    contents=[
-                        image_part,
-                        timeframe_prompt
-                    ],
-                    label="multi-timeframe analysis"
+                timeframe_text = (
+                    optional_gemini_analysis(
+                        client=client,
+                        model=model_name,
+                        contents=[
+                            image_part,
+                            timeframe_prompt
+                        ],
+                        label="multi-timeframe analysis"
+                    )
                 )
 
 
             # ====================================================
-            # CATALYST / EVENT ANALYSIS
+            # CATALYST ANALYSIS
             # ====================================================
 
             with st.spinner(
@@ -614,18 +610,20 @@ Do not invent macroeconomic conditions.
                     )
                 )
 
-                catalyst_text = optional_gemini_analysis(
-                    client=client,
-                    model=model_name,
-                    contents=[
-                        catalyst_prompt
-                    ],
-                    label="catalyst and event analysis"
+                catalyst_text = (
+                    optional_gemini_analysis(
+                        client=client,
+                        model=model_name,
+                        contents=[
+                            catalyst_prompt
+                        ],
+                        label="catalyst and event analysis"
+                    )
                 )
 
 
             # ====================================================
-            # MAIN MARKET ANALYSIS PROMPT
+            # MAIN ANALYSIS PROMPT
             # ====================================================
 
             final_prompt = f"""
@@ -656,7 +654,7 @@ ASSET
 
 
 ====================================================
-1. OBSERVED EVIDENCE
+OBSERVED EVIDENCE
 ====================================================
 
 Identify evidence from:
@@ -667,11 +665,11 @@ Identify evidence from:
 - sentiment
 - macroeconomic conditions
 - timeframe analysis
-- catalyst/event analysis
+- catalyst analysis
 
 
 ====================================================
-2. INFERENCES
+INFERENCES
 ====================================================
 
 Explain reasonable conclusions derived
@@ -679,62 +677,59 @@ from the evidence.
 
 
 ====================================================
-3. UNCERTAINTIES
+UNCERTAINTIES
 ====================================================
 
 Identify what cannot be established reliably.
 
-Do not convert assumptions into facts.
+
+====================================================
+BULLISH SCENARIO
+====================================================
+
+Explain evidence supporting the bullish case.
 
 
 ====================================================
-4. BULLISH SCENARIO
+NEUTRAL SCENARIO
 ====================================================
 
-Explain evidence supporting a bullish scenario.
-
-
-====================================================
-5. NEUTRAL SCENARIO
-====================================================
-
-Explain evidence supporting a neutral,
-range-bound or uncertain scenario.
+Explain evidence supporting the neutral,
+range-bound or uncertain case.
 
 
 ====================================================
-6. BEARISH SCENARIO
+BEARISH SCENARIO
 ====================================================
 
-Explain evidence supporting a bearish scenario.
+Explain evidence supporting the bearish case.
 
 
 ====================================================
-7. TIMEFRAME ALIGNMENT
+TIMEFRAME ALIGNMENT
 ====================================================
 
-Explain whether the available timeframes
-agree or conflict.
+Explain whether timeframes agree or conflict.
 
 Conflicting timeframes should increase
 uncertainty.
 
 
 ====================================================
-8. CATALYST IMPACT
+CATALYST IMPACT
 ====================================================
 
-Explain which identified catalysts could
-materially change the three scenarios.
+Explain which catalysts could materially
+change the three scenarios.
 
-Do NOT predict catalyst outcomes.
+Do not predict catalyst outcomes.
 
 
 ====================================================
 EVIDENCE RULES
 ====================================================
 
-Do NOT fabricate:
+Do not fabricate:
 
 - prices
 - news
@@ -746,8 +741,6 @@ Do NOT fabricate:
 - technical patterns
 - institutional activity
 - analyst opinions
-
-If unavailable, say so.
 
 Clearly distinguish:
 
@@ -811,20 +804,22 @@ that would materially change the assessment.
                 "🤖 Completing market intelligence analysis..."
             ):
 
-                response = generate_with_retry(
-                    client=client,
-                    model=model_name,
-                    contents=[
-                        image_part,
-                        final_prompt
-                    ],
-                    label="main market intelligence analysis",
-                    max_attempts=3
+                response = (
+                    generate_with_retry(
+                        client=client,
+                        model=model_name,
+                        contents=[
+                            image_part,
+                            final_prompt
+                        ],
+                        label="main market intelligence analysis",
+                        max_attempts=3
+                    )
                 )
 
 
             # ====================================================
-            # ADVERSARIAL BULL VS BEAR ANALYSIS
+            # ADVERSARIAL ANALYSIS
             # ====================================================
 
             adversarial_prompt = (
@@ -842,28 +837,30 @@ that would materially change the assessment.
                 "⚔️ Challenging the bullish and bearish cases..."
             ):
 
-                adversarial_text = optional_gemini_analysis(
-                    client=client,
-                    model=model_name,
-                    contents=[
-                        adversarial_prompt
-                    ],
-                    label="bull vs bear adversarial analysis"
+                adversarial_text = (
+                    optional_gemini_analysis(
+                        client=client,
+                        model=model_name,
+                        contents=[
+                            adversarial_prompt
+                        ],
+                        label="bull vs bear adversarial analysis"
+                    )
                 )
 
 
-            # ========================================================
-            # ASSET DISPLAY
-            # ========================================================
+            # ====================================================
+            # DISPLAY ASSET
+            # ====================================================
 
             st.success(
                 f"Asset identified: {asset_symbol}"
             )
 
 
-            # ========================================================
+            # ====================================================
             # MARKET DATA
-            # ========================================================
+            # ====================================================
 
             with st.expander(
                 "📡 Market Data",
@@ -875,9 +872,9 @@ that would materially change the assessment.
                 )
 
 
-            # ========================================================
-            # FINANCIAL NEWS
-            # ========================================================
+            # ====================================================
+            # NEWS
+            # ====================================================
 
             with st.expander(
                 "📰 Live Financial News",
@@ -940,9 +937,9 @@ that would materially change the assessment.
                     )
 
 
-            # ========================================================
+            # ====================================================
             # SENTIMENT
-            # ========================================================
+            # ====================================================
 
             with st.expander(
                 "📣 Market Sentiment",
@@ -954,9 +951,9 @@ that would materially change the assessment.
                 )
 
 
-            # ========================================================
+            # ====================================================
             # MACRO
-            # ========================================================
+            # ====================================================
 
             with st.expander(
                 "🌍 Macroeconomic Context",
@@ -968,9 +965,9 @@ that would materially change the assessment.
                 )
 
 
-            # ========================================================
+            # ====================================================
             # TIMEFRAME
-            # ========================================================
+            # ====================================================
 
             st.divider()
 
@@ -983,9 +980,9 @@ that would materially change the assessment.
             )
 
 
-            # ========================================================
+            # ====================================================
             # CATALYST
-            # ========================================================
+            # ====================================================
 
             st.divider()
 
@@ -998,9 +995,9 @@ that would materially change the assessment.
             )
 
 
-            # ========================================================
+            # ====================================================
             # MAIN REPORT
-            # ========================================================
+            # ====================================================
 
             st.divider()
 
@@ -1013,9 +1010,9 @@ that would materially change the assessment.
             )
 
 
-            # ========================================================
+            # ====================================================
             # ADVERSARIAL REPORT
-            # ========================================================
+            # ====================================================
 
             st.divider()
 
@@ -1028,9 +1025,9 @@ that would materially change the assessment.
             )
 
 
-            # ========================================================
+            # ====================================================
             # EVIDENCE EXTRACTION
-            # ========================================================
+            # ====================================================
 
             evidence_scores = (
                 extract_evidence_scores(
@@ -1041,21 +1038,21 @@ that would materially change the assessment.
 
             if evidence_scores:
 
-                # ====================================================
-                # SCENARIO PROBABILITIES
-                # ====================================================
+                # =================================================
+                # ADVERSARIAL-INTEGRATED PROBABILITIES
+                # =================================================
 
                 probabilities = (
                     calculate_scenario_probabilities(
-                        evidence_scores,
-                        adversarial_text
+                        evidence_scores=evidence_scores,
+                        adversarial_text=adversarial_text
                     )
                 )
 
 
-                # ====================================================
-                # CONFIDENCE ENGINE
-                # ====================================================
+                # =================================================
+                # CONFIDENCE
+                # =================================================
 
                 confidence = calculate_confidence(
                     evidence_scores=evidence_scores,
@@ -1068,9 +1065,9 @@ that would materially change the assessment.
                 )
 
 
-                # ====================================================
-                # SCENARIO DISPLAY
-                # ====================================================
+                # =================================================
+                # PROBABILITIES
+                # =================================================
 
                 st.divider()
 
@@ -1080,7 +1077,9 @@ that would materially change the assessment.
                 )
 
 
-                col1, col2, col3 = st.columns(3)
+                col1, col2, col3 = (
+                    st.columns(3)
+                )
 
 
                 with col1:
@@ -1114,9 +1113,9 @@ that would materially change the assessment.
                 )
 
 
-                # ====================================================
+                # =================================================
                 # BALANCE WARNING
-                # ====================================================
+                # =================================================
 
                 directional_gap = abs(
                     probabilities["Bullish"]
@@ -1129,15 +1128,26 @@ that would materially change the assessment.
 
                     st.warning(
                         "⚖️ Bullish and bearish evidence "
-                        "are closely balanced. Neutral "
-                        "has therefore been given "
+                        "remain closely balanced. "
+                        "Neutral has therefore received "
                         "meaningful weight."
                     )
 
 
-                # ====================================================
+                # =================================================
+                # ADVERSARIAL IMPACT EXPLANATION
+                # =================================================
+
+                st.caption(
+                    "⚔️ Scenario probabilities incorporate "
+                    "both the structured evidence scores "
+                    "and the Bull/Bear adversarial challenge."
+                )
+
+
+                # =================================================
                 # CONFIDENCE
-                # ====================================================
+                # =================================================
 
                 st.divider()
 
@@ -1189,16 +1199,16 @@ that would materially change the assessment.
 
                 st.info(
                     "⚠️ Evidence confidence is NOT the "
-                    "probability that the market will "
-                    "move in the predicted direction. "
-                    "It measures the quality, availability "
-                    "and consistency of the evidence."
+                    "probability that the market will move "
+                    "in the predicted direction. It measures "
+                    "the quality, availability and consistency "
+                    "of the evidence."
                 )
 
 
-                # ====================================================
-                # EVIDENCE DETAILS
-                # ====================================================
+                # =================================================
+                # EVIDENCE SCORES
+                # =================================================
 
                 with st.expander(
                     "🔬 View Evidence Scores",
@@ -1214,9 +1224,9 @@ that would materially change the assessment.
                         )
 
 
-                # ====================================================
+                # =================================================
                 # STRONGEST SCENARIO
-                # ====================================================
+                # =================================================
 
                 highest_scenario = max(
                     probabilities,
@@ -1247,32 +1257,26 @@ that would materially change the assessment.
 
         except Exception as error:
 
-            error_text = str(error)
-
             if is_quota_error(error):
 
                 st.error(
-                    "🚫 Gemini API quota has been reached.\n\n"
-                    "This is different from a temporary 503 "
-                    "high-demand error. The app cannot bypass "
-                    "a quota limit. Please wait for the quota "
-                    "to reset or check the Gemini API plan."
+                    "🚫 Gemini API quota has been reached. "
+                    "Please wait for the quota to reset "
+                    "or check your Gemini API plan."
                 )
 
             elif is_temporary_gemini_error(error):
 
                 st.error(
-                    "⚠️ Gemini is currently unavailable "
-                    "because the model is experiencing "
-                    "high demand.\n\n"
-                    "The app automatically retried the request "
-                    "but Gemini did not become available."
+                    "⚠️ Gemini is currently experiencing "
+                    "high demand. The app retried the "
+                    "request but Gemini remained unavailable."
                 )
 
             else:
 
                 st.error(
-                    f"Analysis failed: {error_text}"
+                    f"Analysis failed: {error}"
                 )
 
 
