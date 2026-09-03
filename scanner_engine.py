@@ -3,7 +3,6 @@ import time
 from market_data import get_market_data
 from research_engine import normalize_crypto_id
 
-
 DEFAULT_ASSETS = [
     "BTC",
     "ETH",
