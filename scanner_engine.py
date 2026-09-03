@@ -179,16 +179,12 @@ def scan_asset(asset_symbol):
         coin_data.get("usd_market_cap")
     )
 
-    momentum_score = (
-        calculate_market_momentum(
-            change_24h
-        )
+    momentum_score = calculate_market_momentum(
+        change_24h
     )
 
-    momentum_classification = (
-        classify_momentum(
-            change_24h
-        )
+    momentum_classification = classify_momentum(
+        change_24h
     )
 
     if change_24h > 0:
@@ -478,4 +474,5 @@ def build_scanner_summary(
 
     return "\n".join(
         lines
-        )
+    )
+    
