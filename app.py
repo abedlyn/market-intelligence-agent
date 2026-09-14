@@ -803,7 +803,106 @@ Use 0 when evidence is unavailable.
             st.write(
                 adversarial_text
             )
+# ============================================================
+# SCANNER EVIDENCE → SCENARIO → CONFIDENCE → OPPORTUNITY
+# ============================================================
 
+evidence_scores = extract_evidence_scores(
+    response.text
+)
+
+if evidence_scores:
+
+    probabilities = calculate_scenario_probabilities(
+        evidence_scores=evidence_scores,
+        adversarial_text=adversarial_text
+    )
+
+    confidence = calculate_confidence(
+        evidence_scores=evidence_scores,
+        probabilities=probabilities,
+        adversarial_text=adversarial_text,
+        market_context=market_context,
+        news_context=news_context,
+        sentiment_context=sentiment_context,
+        macro_context=macro_context
+    )
+
+    opportunity = build_opportunity(
+        asset_symbol=asset_symbol,
+        scenario_probabilities=probabilities,
+        confidence_score=confidence["score"],
+        reason=(
+            "Scanner candidate supported by "
+            "market intelligence, evidence scoring "
+            "and adversarial Bull/Bear analysis."
+        )
+    )
+
+    actionable = get_actionable_opportunities(
+        [opportunity],
+        minimum_score=65
+    )
+
+    st.divider()
+
+    st.subheader(
+        "🎯 Scanner Opportunity"
+    )
+
+    st.metric(
+        "Evidence Confidence",
+        f"{confidence['score']}/100"
+    )
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric(
+            "🐂 Bullish",
+            f"{probabilities['Bullish']}%"
+        )
+
+    with col2:
+        st.metric(
+            "⚖️ Neutral",
+            f"{probabilities['Neutral']}%"
+        )
+
+    with col3:
+        st.metric(
+            "🐻 Bearish",
+            f"{probabilities['Bearish']}%"
+        )
+
+    if actionable:
+
+        selected_opportunity = actionable[0]
+
+        st.markdown(
+            format_opportunity(
+                selected_opportunity
+            )
+        )
+
+        st.warning(
+            "⚠️ AI-generated opportunity for review. "
+            "No automatic trade execution."
+        )
+
+    else:
+
+        st.info(
+            "No sufficiently strong actionable "
+            "opportunity was identified."
+        )
+
+else:
+
+    st.warning(
+        "No usable evidence scores were returned, "
+        "so the opportunity could not be scored."
+        )
             st.info(
                 "Scanner analysis is evidence-based and "
                 "does not guarantee future market movement."
