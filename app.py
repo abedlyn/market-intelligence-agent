@@ -813,9 +813,9 @@ Use 0 when evidence is unavailable.
 
             if evidence_scores:
 
-    probabilities = calculate_scenario_probabilities(
-        evidence_scores=evidence_scores,
-        adversarial_text=adversarial_text
+                probabilities = calculate_scenario_probabilities(
+                    evidence_scores=evidence_scores,
+                    adversarial_text=adversarial_text
     )
 
     confidence = calculate_confidence(
