@@ -483,15 +483,22 @@ if st.session_state.get(
                     asset_symbol
                 )
 
-                # --------------------------------------------
-                # MARKET DATA
-                # --------------------------------------------
+                # Reuse market data already retrieved
+                # by the live scanner. This avoids making
+                # a second CoinGecko request.
+                selected_candidate = next(
+                    (
+                        candidate
+                        for candidate in st.session_state.get(
+                            "scanner_candidates",
+                            []
+                        )
+                        if candidate.get("asset") == asset_symbol
+                    ),
+                    None
+                )
 
-                if crypto_id:
-
-                    market_data = get_market_data(
-                        crypto_id
-                    )
+                if selected_candidate:
 
                     market_context = f"""
 LIVE MARKET DATA
@@ -499,12 +506,30 @@ LIVE MARKET DATA
 Asset:
 {asset_symbol}
 
-Current market information:
+Price:
+${float(selected_candidate.get("price", 0) or 0):,.6f}
 
-{market_data}
+24h Change:
+{float(selected_candidate.get("change_24h", 0) or 0):+.2f}%
 
-Treat this as current market evidence,
-not a prediction.
+24h Volume:
+${float(selected_candidate.get("volume", 0) or 0):,.0f}
+
+Market Cap:
+${float(selected_candidate.get("market_cap", 0) or 0):,.0f}
+
+Momentum Score:
+{selected_candidate.get("momentum_score", 0)}/100
+
+Momentum:
+{selected_candidate.get("momentum", "UNKNOWN")}
+
+Preliminary Direction:
+{selected_candidate.get("preliminary_direction", "NEUTRAL")}
+
+This information was retrieved by the live market
+scanner and is being reused for deep analysis.
+Do not treat it as a prediction.
 """
 
                 else:
@@ -512,9 +537,10 @@ not a prediction.
                     market_context = f"""
 LIVE MARKET DATA
 
-No supported cryptocurrency market data
-was retrieved for {asset_symbol}.
+No scanner market-data record was found for
+{asset_symbol}.
 
+Do not make another market-data request.
 Do not invent current market data.
 """
 
