@@ -1,3 +1,8 @@
+from scanner_engine import (
+    get_top_candidates,
+    filter_candidates,
+    build_scanner_summary,
+)
 def clamp(value, minimum=0, maximum=100):
     return max(minimum, min(maximum, value))
 
