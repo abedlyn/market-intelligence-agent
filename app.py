@@ -403,7 +403,13 @@ if st.session_state.scanner_candidates:
                     "24h Change",
                     f"{change:+.2f}%",
                 )
-
+            if st.button(
+                f"🧠 DEEP ANALYZE {asset}",
+                key=f"deep_analyze_{asset}",
+                use_container_width=True
+            ):
+                st.session_state.selected_scanner_asset = asset
+                st.session_state.run_scanner_analysis = True
             with col3:
                 st.metric(
                     "Momentum",
