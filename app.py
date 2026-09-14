@@ -56,7 +56,10 @@ from opportunity_engine import (
     get_actionable_opportunities,
     format_opportunity
 )
-
+from scanner_engine import (
+    get_top_candidates,
+    filter_candidates,
+)
 
 # ============================================================
 # PAGE CONFIGURATION
@@ -269,6 +272,182 @@ if st.session_state.declined_opportunities:
 
 
 # ============================================================
+# ============================================================
+# LIVE MARKET SCANNER
+# ============================================================
+
+if "scanner_candidates" not in st.session_state:
+    st.session_state.scanner_candidates = []
+
+st.divider()
+
+st.subheader("🔭 Live Market Scanner")
+
+st.write(
+    "Scan the supported crypto market and identify "
+    "preliminary candidates before deeper market "
+    "intelligence analysis."
+)
+
+scanner_col1, scanner_col2 = st.columns(2)
+
+with scanner_col1:
+    scan_limit = st.slider(
+        "Number of candidates to scan",
+        min_value=3,
+        max_value=10,
+        value=5,
+        step=1,
+    )
+
+with scanner_col2:
+    minimum_momentum = st.slider(
+        "Minimum momentum score",
+        min_value=0,
+        max_value=100,
+        value=60,
+        step=5,
+    )
+
+if st.button(
+    "🔎 SCAN MARKET",
+    use_container_width=True,
+):
+    with st.spinner(
+        "🌐 Scanning the market..."
+    ):
+        try:
+            candidates = get_top_candidates(
+                limit=scan_limit
+            )
+
+            candidates = filter_candidates(
+                candidates,
+                minimum_momentum_score=minimum_momentum,
+            )
+
+            st.session_state.scanner_candidates = candidates
+
+        except Exception as scanner_error:
+            st.session_state.scanner_candidates = []
+
+            st.error(
+                f"Market scanner failed: {scanner_error}"
+            )
+
+
+if st.session_state.scanner_candidates:
+
+    candidates = st.session_state.scanner_candidates
+
+    st.success(
+        f"Found {len(candidates)} preliminary "
+        "candidate(s)."
+    )
+
+    for index, candidate in enumerate(
+        candidates,
+        start=1,
+    ):
+
+        asset = candidate.get(
+            "asset",
+            "UNKNOWN",
+        )
+
+        price = float(
+            candidate.get("price", 0) or 0
+        )
+
+        change = float(
+            candidate.get("change_24h", 0) or 0
+        )
+
+        momentum_score = candidate.get(
+            "momentum_score",
+            0,
+        )
+
+        momentum = candidate.get(
+            "momentum",
+            "UNKNOWN",
+        )
+
+        direction = candidate.get(
+            "preliminary_direction",
+            "NEUTRAL",
+        )
+
+        volume = float(
+            candidate.get("volume", 0) or 0
+        )
+
+        market_cap = float(
+            candidate.get("market_cap", 0) or 0
+        )
+
+        with st.container(border=True):
+
+            st.markdown(
+                f"### #{index} — {asset}"
+            )
+
+            col1, col2, col3, col4 = st.columns(4)
+
+            with col1:
+                st.metric(
+                    "Price",
+                    f"${price:,.6f}",
+                )
+
+            with col2:
+                st.metric(
+                    "24h Change",
+                    f"{change:+.2f}%",
+                )
+
+            with col3:
+                st.metric(
+                    "Momentum",
+                    f"{momentum_score}/100",
+                )
+
+            with col4:
+                st.metric(
+                    "Preliminary Bias",
+                    direction,
+                )
+
+            st.caption(momentum)
+
+            detail_col1, detail_col2 = st.columns(2)
+
+            with detail_col1:
+                st.write(
+                    f"**Market cap:** "
+                    f"${market_cap:,.0f}"
+                )
+
+            with detail_col2:
+                st.write(
+                    f"**24h volume:** "
+                    f"${volume:,.0f}"
+                )
+
+    st.info(
+        "These are screening candidates only. "
+        "They have not yet passed the full "
+        "market-intelligence analysis."
+    )
+
+else:
+
+    st.info(
+        "No scanner candidates yet. "
+        "Press SCAN MARKET to begin."
+    )
+
+st.divider()
 # FILE UPLOAD
 # ============================================================
 
