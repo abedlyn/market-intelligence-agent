@@ -453,6 +453,370 @@ else:
 
 st.divider()
 # ============================================================
+# SCANNER DEEP ANALYSIS
+# ============================================================
+
+if st.session_state.get(
+    "run_scanner_analysis",
+    False
+):
+
+    asset_symbol = st.session_state.get(
+        "selected_scanner_asset"
+    )
+
+    st.session_state.run_scanner_analysis = False
+
+    if asset_symbol:
+
+        try:
+
+            st.subheader(
+                f"🧠 Deep Intelligence Analysis — {asset_symbol}"
+            )
+
+            with st.spinner(
+                f"🌐 Gathering intelligence for {asset_symbol}..."
+            ):
+
+                crypto_id = normalize_crypto_id(
+                    asset_symbol
+                )
+
+                # --------------------------------------------
+                # MARKET DATA
+                # --------------------------------------------
+
+                if crypto_id:
+
+                    market_data = get_market_data(
+                        crypto_id
+                    )
+
+                    market_context = f"""
+LIVE MARKET DATA
+
+Asset:
+{asset_symbol}
+
+Current market information:
+
+{market_data}
+
+Treat this as current market evidence,
+not a prediction.
+"""
+
+                else:
+
+                    market_context = f"""
+LIVE MARKET DATA
+
+No supported cryptocurrency market data
+was retrieved for {asset_symbol}.
+
+Do not invent current market data.
+"""
+
+                # --------------------------------------------
+                # NEWS
+                # --------------------------------------------
+
+                processed_news = []
+
+                try:
+
+                    alpha_vantage_key = st.secrets[
+                        "ALPHA_VANTAGE_API_KEY"
+                    ]
+
+                    news_symbol = asset_symbol
+
+                    if crypto_id:
+                        news_symbol = (
+                            f"CRYPTO:{asset_symbol}"
+                        )
+
+                    news_data = get_market_news(
+                        news_symbol,
+                        alpha_vantage_key,
+                        limit=10
+                    )
+
+                    processed_news = process_news_data(
+                        news_data
+                    )
+
+                    formatted_news = (
+                        format_news_for_ai(
+                            processed_news
+                        )
+                    )
+
+                    news_context = f"""
+LIVE FINANCIAL NEWS
+
+{formatted_news}
+
+Distinguish facts from opinions
+and inferences.
+Do not fabricate news.
+"""
+
+                except Exception as news_error:
+
+                    news_context = f"""
+LIVE FINANCIAL NEWS
+
+News retrieval failed:
+
+{news_error}
+
+Do not invent current news.
+"""
+
+                # --------------------------------------------
+                # SENTIMENT
+                # --------------------------------------------
+
+                try:
+
+                    sentiment_data = (
+                        calculate_news_sentiment(
+                            processed_news
+                        )
+                    )
+
+                    sentiment_context = (
+                        format_sentiment_for_ai(
+                            sentiment_data
+                        )
+                    )
+
+                except Exception as sentiment_error:
+
+                    sentiment_context = f"""
+MARKET SENTIMENT
+
+Sentiment calculation failed:
+
+{sentiment_error}
+"""
+
+                # --------------------------------------------
+                # MACRO
+                # --------------------------------------------
+
+                try:
+
+                    macro_data = get_macro_data()
+
+                    macro_context = (
+                        format_macro_for_ai(
+                            macro_data
+                        )
+                    )
+
+                except Exception as macro_error:
+
+                    macro_context = f"""
+MACROECONOMIC DATA
+
+Macro data retrieval failed:
+
+{macro_error}
+"""
+
+                # --------------------------------------------
+                # TIMEFRAME + CATALYST
+                # --------------------------------------------
+
+                timeframe_prompt = (
+                    build_timeframe_prompt(
+                        asset_symbol
+                    )
+                )
+
+                timeframe_text = (
+                    optional_gemini_analysis(
+                        client=genai.Client(
+                            api_key=st.secrets[
+                                "GEMINI_API_KEY"
+                            ]
+                        ),
+                        model="gemini-3.6-flash",
+                        contents=[
+                            timeframe_prompt
+                        ],
+                        label="scanner multi-timeframe analysis"
+                    )
+                )
+
+                catalyst_prompt = (
+                    build_catalyst_prompt(
+                        asset_symbol
+                    )
+                )
+
+                catalyst_text = (
+                    optional_gemini_analysis(
+                        client=genai.Client(
+                            api_key=st.secrets[
+                                "GEMINI_API_KEY"
+                            ]
+                        ),
+                        model="gemini-3.6-flash",
+                        contents=[
+                            catalyst_prompt
+                        ],
+                        label="scanner catalyst analysis"
+                    )
+                )
+
+            # --------------------------------------------
+            # MAIN INTELLIGENCE ANALYSIS
+            # --------------------------------------------
+
+            client = genai.Client(
+                api_key=st.secrets[
+                    "GEMINI_API_KEY"
+                ]
+            )
+
+            research_prompt = (
+                build_research_prompt(
+                    asset_symbol
+                )
+            )
+
+            scanner_prompt = f"""
+{research_prompt}
+
+{market_context}
+
+{news_context}
+
+{sentiment_context}
+
+{macro_context}
+
+MULTI-TIMEFRAME ANALYSIS
+
+{timeframe_text}
+
+CATALYST ANALYSIS
+
+{catalyst_text}
+
+Analyze {asset_symbol} using the available
+evidence.
+
+Provide:
+
+1. Bullish case
+2. Neutral case
+3. Bearish case
+4. Important risks
+5. What would invalidate each case
+6. Evidence quality
+7. Potential market direction
+
+Do NOT claim certainty or guaranteed future
+movement.
+
+At the end return EXACTLY this JSON:
+
+{{
+  "technical_bullish": 0,
+  "technical_bearish": 0,
+  "momentum_bullish": 0,
+  "momentum_bearish": 0,
+  "sentiment_bullish": 0,
+  "sentiment_bearish": 0,
+  "fundamental_bullish": 0,
+  "fundamental_bearish": 0,
+  "macro_bullish": 0,
+  "macro_bearish": 0
+}}
+
+Use 0 when evidence is unavailable.
+"""
+
+            with st.spinner(
+                "🤖 Running deep market intelligence..."
+            ):
+
+                response = generate_with_retry(
+                    client=client,
+                    model="gemini-3.6-flash",
+                    contents=[
+                        scanner_prompt
+                    ],
+                    label="scanner deep intelligence analysis"
+                )
+
+            # --------------------------------------------
+            # ADVERSARIAL ANALYSIS
+            # --------------------------------------------
+
+            adversarial_prompt = (
+                build_adversarial_prompt(
+                    asset_symbol=asset_symbol,
+                    market_context=market_context,
+                    news_context=news_context,
+                    sentiment_context=sentiment_context,
+                    macro_context=macro_context
+                )
+            )
+
+            adversarial_text = (
+                optional_gemini_analysis(
+                    client=client,
+                    model="gemini-3.6-flash",
+                    contents=[
+                        adversarial_prompt
+                    ],
+                    label="scanner bull vs bear analysis"
+                )
+            )
+
+            # --------------------------------------------
+            # RESULTS
+            # --------------------------------------------
+
+            st.success(
+                f"Deep analysis completed for {asset_symbol}"
+            )
+
+            st.subheader(
+                "🤖 Market Intelligence"
+            )
+
+            st.write(
+                response.text
+            )
+
+            st.subheader(
+                "⚔️ Bull vs Bear Challenge"
+            )
+
+            st.write(
+                adversarial_text
+            )
+
+            st.info(
+                "Scanner analysis is evidence-based and "
+                "does not guarantee future market movement."
+            )
+
+        except Exception as scanner_analysis_error:
+
+            st.error(
+                "Deep scanner analysis failed: "
+                f"{scanner_analysis_error}"
+                )
+
+# ============================================================
 # FILE UPLOAD
 # ============================================================
 
