@@ -807,11 +807,11 @@ Use 0 when evidence is unavailable.
 # SCANNER EVIDENCE → SCENARIO → CONFIDENCE → OPPORTUNITY
 # ============================================================
 
-evidence_scores = extract_evidence_scores(
+    evidence_scores = extract_evidence_scores(
     response.text
 )
 
-if evidence_scores:
+    if evidence_scores:
 
     probabilities = calculate_scenario_probabilities(
         evidence_scores=evidence_scores,
